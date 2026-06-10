@@ -151,43 +151,49 @@ const PORTFOLIO_DATA = {
 
     // Thanh kỹ năng (skill bars) — level tính theo %
     skillBars: [
-      { label: 'Cinematography & Camera',         level: 92 },
-      { label: 'Video Editing & Post-Production',  level: 95 },
-      { label: 'Motion Design & VFX',              level: 85 },
-      { label: 'Color Grading',                    level: 88 },
-      { label: 'AI & Python Automation',           level: 78 },
+      { label: 'Cinematography & Camera', level: 92 },
+      { label: 'Video Editing & Post-Production', level: 95 },
+      { label: 'Motion Design & VFX', level: 85 },
+      { label: 'Color Grading', level: 88 },
+      { label: 'AI & Python Automation', level: 78 },
     ],
 
     // Bằng cấp / học vấn
     education: [
-      { degree: 'Thiết kế Đồ họa',  school: 'FPT Polytechnic'    },
-      { degree: 'Cơ điện tử',        school: 'Đại học Duy Tân'    },
+      { degree: 'Thiết kế Đồ họa', school: 'FPT Polytechnic', icon: 'assets/icon/Logo_FPT_Polytechnic-01.png' },
+      { degree: 'Cơ điện tử', school: 'Đại học Duy Tân', icon: 'assets/icon/Logo_dtu-01.png' },
     ],
   },
 
   // ──────────────────────────────────────────────────────────────────
   // 5. THÔNG TIN LIÊN HỆ
   //    → Cập nhật email, số điện thoại và mạng xã hội tại đây
-  // ──────────────────────────────────────────────────────────────────
+  // ── THÔNG TIN LIÊN HỆ ───────────────────────────────────────────
   contact: {
-    email:    'phanducphat2310@gmail.com',
-    phone:    '0796649266',
+    // Email hiển thị to ở cuối trang
+    email: 'phanducphat2310@gmail.com',
 
-    // Địa chỉ hiển thị (không cần chính xác đến số nhà)
-    location: 'Hải Châu, Đà Nẵng, Vietnam',
+    // Số điện thoại (sẽ tự động format hiển thị đẹp)
+    phone: '0796649266',
 
-    // Các liên kết mạng xã hội
+    // Địa chỉ ngắn
+    location: 'Hai Chau, Da Nang, Vietnam',
+
+    // Link mạng xã hội (Để trống nếu không muốn hiển thị)
     socials: {
       linkedin: 'https://www.linkedin.com/in/phanducphat23',
-      behance:  'https://www.behance.net/pdp23',
+      behance: 'https://www.behance.net/pdp23',
+    },
 
-      // Thêm kênh khác nếu muốn:
-      // youtube:   'https://www.youtube.com/@...',
-      // instagram: 'https://www.instagram.com/...',
+    icons: {
+      email: 'assets/icon/Gmail_icon-01.png',
+      location: 'assets/icon/Google_Maps_icon-01.png',
+      linkedin: 'assets/icon/LinkedIn_Logo/LinkedIn_Logo_White.png',
+      behance: 'assets/icon/Behance_logo/Behance_logo_white.png'
     },
 
     // Năm hiển thị trong footer
-    copyrightYear: 2024,
+    copyrightYear: 2026,
   },
 
 }; // ← Kết thúc PORTFOLIO_DATA — đừng xóa dòng này!

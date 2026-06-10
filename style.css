@@ -328,7 +328,7 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 700; line-height: 1.1;
 }
 
 .hero-name {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: clamp(4.5rem, 13vw, 12rem);
   font-weight: 900;
   letter-spacing: -0.03em;
@@ -338,14 +338,13 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 700; line-height: 1.1;
 
 .hero-name-line { display: block; }
 
-.accent-stroke {
-  -webkit-text-stroke: 1.5px rgba(245,245,247,0.6);
-  color: transparent;
-  transition: color 0.7s var(--ease), -webkit-text-stroke 0.7s var(--ease);
-}
-.accent-stroke:hover {
+.hero-char {
+  display: inline-block;
   color: var(--text);
-  -webkit-text-stroke: 0px transparent;
+  transition: color 0.15s ease-out;
+}
+.hero-char:hover {
+  color: var(--accent);
 }
 
 .hero-divider {
