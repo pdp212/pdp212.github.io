@@ -1,146 +1,429 @@
-/* ══════════════════════════════════════════════════════════════════
-   PHAN ĐỨC PHÁT — PORTFOLIO INTERACTIONS
-   ══════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   script.js — ENGINE RENDER DỮ LIỆU + TƯƠNG TÁC
+   Portfolio: Phan Đức Phát | pdp212.github.io
+
+   File này làm 2 việc:
+   1. RENDER: Đọc dữ liệu từ PORTFOLIO_DATA (data.js) và
+              điền vào các phần tử HTML trong index.html
+   2. INTERACT: Xử lý mọi tương tác (navbar, lightbox, scroll, v.v.)
+
+   Bạn KHÔNG cần sửa file này trừ khi muốn thay đổi cách hoạt động.
+   Để thay nội dung, hãy sửa data.js.
+   ════════════════════════════════════════════════════════════════════ */
 
 (function () {
   'use strict';
 
-  // ─── NAVBAR: Hide on scroll down, show on scroll up ─────────────
-  const navbar = document.getElementById('navbar');
-  let lastScrollY = 0;
-  let ticking = false;
+  // ══════════════════════════════════════════════════════════════════
+  //  PHẦN 1: RENDER DỮ LIỆU TỪ data.js
+  //  Chạy ngay khi trang tải xong
+  // ══════════════════════════════════════════════════════════════════
+
+  /**
+   * Hàm tiện ích: lấy phần tử theo id, không báo lỗi nếu không tìm thấy
+   */
+  function el(id) {
+    return document.getElementById(id);
+  }
+
+  /**
+   * Hàm tiện ích: chuyển **text** → <strong>, *text* → <em> trong chuỗi
+   * Dùng để render các đoạn bio có định dạng đơn giản
+   */
+  function parseMarkdown(text) {
+    return text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>');
+  }
+
+  /**
+   * Hàm tiện ích: tạo icon SVG "play button" cho card dự án
+   */
+  function svgPlayIcon(size) {
+    var s = size || 40;
+    var r = s / 2 - 1;
+    var cx = s / 2;
+    var cy = s / 2;
+    return '<svg viewBox="0 0 ' + s + ' ' + s + '" fill="none">'
+      + '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" stroke="#F5F5F7" stroke-width="0.8"/>'
+      + '<polygon points="' + (cx-4) + ',' + (cy-8) + ' ' + (cx+8) + ',' + cy + ' ' + (cx-4) + ',' + (cy+8) + '" fill="#F5F5F7"/>'
+      + '</svg>';
+  }
+
+  // ── 1.1 SEO & META ──────────────────────────────────────────────
+  function renderMeta() {
+    var p = PORTFOLIO_DATA.profile;
+    var title = p.fullName + ' — ' + 'Video Editor & Motion Designer';
+    document.title = title;
+    var metaDesc = 'Portfolio của ' + p.fullName + ' — Professional Video Editor, Cameraman & Motion Designer tại Silver Swallows Studio, Đà Nẵng.';
+    var descEl = document.getElementById('pageDesc');
+    if (descEl) descEl.setAttribute('content', metaDesc);
+    var ogTitleEl = document.getElementById('ogTitle');
+    if (ogTitleEl) ogTitleEl.setAttribute('content', title);
+  }
+
+  // ── 1.2 HERO SECTION ────────────────────────────────────────────
+  function renderHero() {
+    var p = PORTFOLIO_DATA.profile;
+
+    if (el('heroLocation'))  el('heroLocation').textContent  = p.location;
+    if (el('heroNameLine1')) el('heroNameLine1').textContent = p.nameLine1;
+    if (el('heroNameLine2')) el('heroNameLine2').textContent = p.nameLine2;
+    if (el('heroRole'))      el('heroRole').textContent      = p.role;
+    if (el('heroWorkplace')) el('heroWorkplace').textContent = p.workplace;
+    if (el('heroVertText'))  el('heroVertText').textContent  = p.heroVertText;
+
+    // Slogan: lưu nội dung để typewriter hiệu ứng dùng sau
+    var sloganEl = el('heroSlogan');
+    if (sloganEl) {
+      sloganEl.dataset.sloganText = p.slogan;
+      // Giữ trống để typewriter điền dần
+    }
+  }
+
+  // ── 1.3 SHOWREEL ────────────────────────────────────────────────
+  function renderShowreel() {
+    var sr = PORTFOLIO_DATA.showreel;
+    var frame = el('showreelFrame');
+    if (!frame) return;
+
+    if (sr.embedUrl) {
+      // Có link video → nhúng iframe thực
+      var iframe = document.createElement('iframe');
+      iframe.src = sr.embedUrl;
+      iframe.frameBorder = '0';
+      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      iframe.allowFullscreen = true;
+      iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;';
+      frame.style.position = 'relative';
+      frame.appendChild(iframe);
+    } else {
+      // Chưa có video → hiển thị placeholder đẹp
+      frame.innerHTML = ''
+        + '<div class="showreel-placeholder">'
+        +   '<div class="play-button" id="playShowreel" role="button" tabindex="0" aria-label="Play showreel">'
+        +     '<svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+        +       '<circle cx="30" cy="30" r="29" stroke="#C5A880" stroke-width="1"/>'
+        +       '<polygon points="24,18 44,30 24,42" fill="#C5A880"/>'
+        +     '</svg>'
+        +   '</div>'
+        +   '<div class="showreel-text">'
+        +     '<p class="showreel-title">' + (sr.placeholderTitle || 'SHOWREEL') + '</p>'
+        +     '<p class="showreel-sub">'   + (sr.placeholderSub   || '')         + '</p>'
+        +   '</div>'
+        +   '<div class="showreel-corner top-left"    aria-hidden="true"></div>'
+        +   '<div class="showreel-corner top-right"   aria-hidden="true"></div>'
+        +   '<div class="showreel-corner bottom-left" aria-hidden="true"></div>'
+        +   '<div class="showreel-corner bottom-right"aria-hidden="true"></div>'
+        + '</div>';
+    }
+  }
+
+  // ── 1.4 PROJECTS GRID ───────────────────────────────────────────
+  // Map kích thước card → CSS class
+  var sizeClassMap = { large: 'card-large', medium: 'card-medium', small: 'card-small' };
+
+  // Map delay theo thứ tự dự án
+  var delayList = [0, 100, 150, 200, 250, 300, 350, 400];
+
+  function renderProjects() {
+    var grid = el('projectsGrid');
+    if (!grid) return;
+
+    var projects = PORTFOLIO_DATA.projects;
+    var html = '';
+
+    projects.forEach(function (proj, idx) {
+      var sizeClass = sizeClassMap[proj.size] || 'card-medium';
+      var delay     = delayList[idx] || 0;
+
+      // Visual: ưu tiên thumbnail → gradient
+      var visualContent = '';
+      if (proj.thumbnail) {
+        visualContent = '<img src="' + proj.thumbnail + '" alt="' + proj.title + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;">';
+      }
+
+      html += ''
+        + '<article'
+        +   ' class="project-card ' + sizeClass + ' fade-in"'
+        +   ' data-delay="' + delay + '"'
+        +   ' data-id="' + proj.id + '"'
+        +   ' role="listitem"'
+        +   ' tabindex="0"'
+        +   ' aria-label="Dự án: ' + proj.title + '"'
+        + '>'
+        +   '<div class="project-visual ' + proj.gradientClass + '">'
+        +     visualContent
+        +     '<div class="project-overlay">'
+        +       '<div class="project-play-icon" aria-hidden="true">' + svgPlayIcon(40) + '</div>'
+        +     '</div>'
+        +     '<div class="project-grain" aria-hidden="true"></div>'
+        +   '</div>'
+        +   '<div class="project-info">'
+        +     '<p class="project-category">' + proj.category + '</p>'
+        +     '<h3 class="project-title">'   + proj.title    + '</h3>'
+        +     '<p class="project-tags">'     + proj.tags     + '</p>'
+        +     '<button class="project-cta" aria-label="Xem dự án ' + proj.title + '">View Project ↗</button>'
+        +   '</div>'
+        + '</article>';
+    });
+
+    grid.innerHTML = html;
+
+    // Gán link CTA Behance & LinkedIn
+    var ctaBehance  = el('ctaBehance');
+    var ctaLinkedIn = el('ctaLinkedIn');
+    var socials = PORTFOLIO_DATA.contact.socials;
+    if (ctaBehance  && socials.behance)  ctaBehance.href  = socials.behance;
+    if (ctaLinkedIn && socials.linkedin) ctaLinkedIn.href = socials.linkedin;
+  }
+
+  // ── 1.5 ABOUT SECTION ───────────────────────────────────────────
+  function renderAbout() {
+    var a = PORTFOLIO_DATA.about;
+
+    // Eyebrow & headline
+    if (el('aboutEyebrow')) el('aboutEyebrow').textContent = a.eyebrow;
+    if (el('aboutHeadline')) {
+      el('aboutHeadline').innerHTML =
+        a.headlineLine1 + '<br/><em>' + a.headlineLine2 + '</em>';
+    }
+
+    // Bio paragraphs
+    var bodyEl = el('aboutBody');
+    if (bodyEl) {
+      bodyEl.innerHTML = a.bio.map(function (para) {
+        return '<p>' + parseMarkdown(para) + '</p>';
+      }).join('');
+    }
+
+    // Skills text (dạng text | text | text)
+    var skillsEl = el('skillsText');
+    if (skillsEl) {
+      var skillHtml = '';
+      a.skills.forEach(function (skill, i) {
+        skillHtml += '<span class="skill-item" role="listitem">' + skill + '</span>';
+        if (i < a.skills.length - 1) {
+          skillHtml += '<span class="skill-sep" aria-hidden="true">|</span>';
+        }
+      });
+      skillsEl.innerHTML = skillHtml;
+    }
+
+    // Skill bars
+    var barsEl = el('skillsGrid');
+    if (barsEl) {
+      barsEl.innerHTML = a.skillBars.map(function (bar) {
+        return ''
+          + '<div class="skill-bar-item">'
+          +   '<span class="skill-bar-label">' + bar.label + '</span>'
+          +   '<div class="skill-bar">'
+          +     '<div class="skill-fill" style="--fill:' + bar.level + '%"></div>'
+          +   '</div>'
+          + '</div>';
+      }).join('');
+    }
+
+    // Education cards
+    var eduEl = el('educationCards');
+    if (eduEl) {
+      eduEl.innerHTML = a.education.map(function (edu) {
+        return ''
+          + '<div class="edu-card">'
+          +   '<span class="edu-icon" aria-hidden="true">◈</span>'
+          +   '<div>'
+          +     '<p class="edu-degree">' + edu.degree + '</p>'
+          +     '<p class="edu-school">' + edu.school + '</p>'
+          +   '</div>'
+          + '</div>';
+      }).join('');
+    }
+  }
+
+  // ── 1.6 CONTACT & FOOTER ────────────────────────────────────────
+  function renderContact() {
+    var c = PORTFOLIO_DATA.contact;
+    var p = PORTFOLIO_DATA.profile;
+
+    // Định dạng số điện thoại hiển thị: 0796649266 → 0796 649 266
+    var phoneDisplay = c.phone.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3');
+
+    var infoEl = el('contactInfo');
+    if (infoEl) {
+      infoEl.innerHTML = ''
+        + '<div class="contact-row">'
+        +   '<span class="contact-label">Email</span>'
+        +   '<a href="mailto:' + c.email + '" class="contact-value" id="contactEmail">' + c.email + '</a>'
+        + '</div>'
+        + '<div class="contact-divider" aria-hidden="true"></div>'
+        + '<div class="contact-row">'
+        +   '<span class="contact-label">Hotline</span>'
+        +   '<a href="tel:+84' + c.phone.replace(/^0/, '') + '" class="contact-value" id="contactPhone">' + phoneDisplay + '</a>'
+        + '</div>'
+        + '<div class="contact-divider" aria-hidden="true"></div>'
+        + '<div class="contact-row">'
+        +   '<span class="contact-label">Location</span>'
+        +   '<span class="contact-value">' + c.location + '</span>'
+        + '</div>'
+        + '<div class="contact-divider" aria-hidden="true"></div>'
+        + '<div class="contact-links">'
+        +   (c.socials.linkedin ? '<a href="' + c.socials.linkedin + '" target="_blank" rel="noopener noreferrer" class="contact-platform-link" id="linkedinLink">LinkedIn ↗</a>' : '')
+        +   (c.socials.behance  ? '<a href="' + c.socials.behance  + '" target="_blank" rel="noopener noreferrer" class="contact-platform-link" id="behanceLink">Behance ↗</a>'  : '')
+        + '</div>';
+    }
+
+    // Footer
+    var footerEl = el('footerInner');
+    if (footerEl) {
+      footerEl.innerHTML = ''
+        + '<p class="footer-name">' + p.fullName + '</p>'
+        + '<p class="footer-copy">© ' + (PORTFOLIO_DATA.contact.copyrightYear || new Date().getFullYear()) + ' · All rights reserved · ' + p.location + '</p>'
+        + '<p class="footer-slogan">' + p.slogan + '</p>';
+    }
+  }
+
+  // ── 1.7 CHẠY TẤT CẢ RENDER ──────────────────────────────────────
+  function renderAll() {
+    renderMeta();
+    renderHero();
+    renderShowreel();
+    renderProjects();
+    renderAbout();
+    renderContact();
+  }
+
+  // Chạy render ngay (data.js đã được load trước script.js)
+  renderAll();
+
+
+  // ══════════════════════════════════════════════════════════════════
+  //  PHẦN 2: TƯƠNG TÁC (Interactions)
+  //  Sau khi render xong mới bind events
+  // ══════════════════════════════════════════════════════════════════
+
+  // ── 2.1 NAVBAR: Ẩn/hiện khi scroll ─────────────────────────────
+  var navbar = el('navbar');
+  var lastScrollY = 0;
+  var navTicking  = false;
 
   function updateNavbar() {
-    const scrollY = window.scrollY;
+    var scrollY = window.scrollY;
     if (scrollY > lastScrollY && scrollY > 80) {
       navbar.classList.add('hidden');
     } else {
       navbar.classList.remove('hidden');
     }
     lastScrollY = scrollY;
-    ticking = false;
+    navTicking = false;
   }
 
   window.addEventListener('scroll', function () {
-    if (!ticking) {
+    if (!navTicking) {
       requestAnimationFrame(updateNavbar);
-      ticking = true;
+      navTicking = true;
     }
   }, { passive: true });
 
-  // ─── NAVBAR: Active link highlight ──────────────────────────────
-  const sections = document.querySelectorAll('section[id]');
-  const navLinks = document.querySelectorAll('.nav-link');
+  // ── 2.2 NAVBAR: Active link theo section đang xem ───────────────
+  var sections = document.querySelectorAll('section[id]');
+  var navLinks = document.querySelectorAll('.nav-link');
 
-  const sectionObserver = new IntersectionObserver(
-    function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          const id = entry.target.getAttribute('id');
-          navLinks.forEach(function (link) {
-            link.classList.remove('active');
-            if (link.getAttribute('href') === '#' + id) {
-              link.classList.add('active');
-            }
-          });
-        }
-      });
-    },
-    { rootMargin: '-40% 0px -55% 0px', threshold: 0 }
-  );
+  var sectionObserver = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        var id = entry.target.getAttribute('id');
+        navLinks.forEach(function (link) {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === '#' + id) link.classList.add('active');
+        });
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px', threshold: 0 });
 
-  sections.forEach(function (section) {
-    sectionObserver.observe(section);
-  });
+  sections.forEach(function (s) { sectionObserver.observe(s); });
 
-  // ─── MOBILE BURGER MENU ──────────────────────────────────────────
-  const burger = document.getElementById('navBurger');
-  const mobileMenu = document.getElementById('navMobile');
+  // ── 2.3 MOBILE BURGER MENU ──────────────────────────────────────
+  var burger     = el('navBurger');
+  var mobileMenu = el('navMobile');
+
+  function closeMobileMenu() {
+    mobileMenu.classList.remove('open');
+    burger.setAttribute('aria-expanded', 'false');
+    mobileMenu.setAttribute('aria-hidden', 'true');
+    var spans = burger.querySelectorAll('span');
+    spans[0].style.transform = '';
+    spans[1].style.opacity   = '';
+    spans[2].style.transform = '';
+  }
 
   if (burger && mobileMenu) {
     burger.addEventListener('click', function () {
-      const isOpen = mobileMenu.classList.toggle('open');
+      var isOpen = mobileMenu.classList.toggle('open');
       burger.setAttribute('aria-expanded', isOpen.toString());
       mobileMenu.setAttribute('aria-hidden', (!isOpen).toString());
-
-      // Animate burger lines
-      const spans = burger.querySelectorAll('span');
+      var spans = burger.querySelectorAll('span');
       if (isOpen) {
         spans[0].style.transform = 'translateY(6px) rotate(45deg)';
-        spans[1].style.opacity = '0';
+        spans[1].style.opacity   = '0';
         spans[2].style.transform = 'translateY(-6px) rotate(-45deg)';
       } else {
-        spans[0].style.transform = '';
-        spans[1].style.opacity = '';
-        spans[2].style.transform = '';
+        closeMobileMenu();
       }
     });
 
-    // Close mobile menu on link click
     document.querySelectorAll('.nav-mobile-link').forEach(function (link) {
-      link.addEventListener('click', function () {
-        mobileMenu.classList.remove('open');
-        burger.setAttribute('aria-expanded', 'false');
-        mobileMenu.setAttribute('aria-hidden', 'true');
-        const spans = burger.querySelectorAll('span');
-        spans[0].style.transform = '';
-        spans[1].style.opacity = '';
-        spans[2].style.transform = '';
-      });
+      link.addEventListener('click', closeMobileMenu);
     });
   }
 
-  // ─── SCROLL FADE-IN ANIMATIONS ──────────────────────────────────
-  const fadeElements = document.querySelectorAll('.fade-in');
+  // ── 2.4 SCROLL FADE-IN ANIMATION ────────────────────────────────
+  var fadeObserver = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        fadeObserver.unobserve(entry.target);
+      }
+    });
+  }, { rootMargin: '0px 0px -60px 0px', threshold: 0.1 });
 
-  const fadeObserver = new IntersectionObserver(
-    function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          fadeObserver.unobserve(entry.target);
-        }
-      });
-    },
-    { rootMargin: '0px 0px -60px 0px', threshold: 0.1 }
-  );
+  // Observe tất cả fade-in (kể cả những phần tử vừa được render động)
+  function observeFadeElements() {
+    document.querySelectorAll('.fade-in').forEach(function (el) {
+      fadeObserver.observe(el);
+    });
+  }
+  observeFadeElements();
 
-  fadeElements.forEach(function (el) {
-    fadeObserver.observe(el);
-  });
+  // ── 2.5 SKILL BAR ANIMATION ─────────────────────────────────────
+  var skillObserver = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('animated');
+        skillObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.3 });
 
-  // ─── SKILL BAR ANIMATIONS ────────────────────────────────────────
-  const skillFills = document.querySelectorAll('.skill-fill');
+  function observeSkillBars() {
+    document.querySelectorAll('.skill-fill').forEach(function (fill) {
+      skillObserver.observe(fill);
+    });
+  }
+  observeSkillBars();
 
-  const skillObserver = new IntersectionObserver(
-    function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('animated');
-          skillObserver.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.3 }
-  );
+  // ── 2.6 LIGHTBOX ────────────────────────────────────────────────
+  var lightbox         = el('lightbox');
+  var lightboxBackdrop = el('lightboxBackdrop');
+  var lightboxClose    = el('lightboxClose');
+  var lightboxVisual   = el('lightboxVisual');
+  var lightboxCategory = el('lightboxCategory');
+  var lightboxTitle    = el('lightboxTitle');
+  var lightboxDesc     = el('lightboxDesc');
+  var lightboxTags     = el('lightboxTags');
+  var lightboxLink     = el('lightboxLink');
 
-  skillFills.forEach(function (fill) {
-    skillObserver.observe(fill);
-  });
-
-  // ─── LIGHTBOX ────────────────────────────────────────────────────
-  const lightbox = document.getElementById('lightbox');
-  const lightboxBackdrop = document.getElementById('lightboxBackdrop');
-  const lightboxClose = document.getElementById('lightboxClose');
-  const lightboxVisual = document.getElementById('lightboxVisual');
-  const lightboxCategory = document.getElementById('lightboxCategory');
-  const lightboxTitle = document.getElementById('lightboxTitle');
-  const lightboxDesc = document.getElementById('lightboxDesc');
-  const lightboxTags = document.getElementById('lightboxTags');
-  const lightboxLink = document.getElementById('lightboxLink');
-
-  // Gradient classes for lightbox visual
-  const gradientMap = {
+  // Map gradient class → màu nền
+  var gradientMap = {
     'pv-gradient-1': 'linear-gradient(135deg, #1a1207 0%, #2d1f0a 40%, #0d0d0d 100%)',
     'pv-gradient-2': 'linear-gradient(135deg, #070d1a 0%, #0a1a2d 40%, #0d0d0d 100%)',
     'pv-gradient-3': 'linear-gradient(135deg, #0d0a1a 0%, #1a0d2d 40%, #0d0d0d 100%)',
@@ -149,41 +432,40 @@
   };
 
   function openLightbox(card) {
-    const title = card.dataset.title || '';
-    const desc = card.dataset.desc || '';
-    const tags = card.dataset.tags || '';
-    const link = card.dataset.link || 'https://www.behance.net/pdp23';
+    // Lấy id dự án từ data attribute, tra cứu trong PORTFOLIO_DATA
+    var projId = card.dataset.id;
+    var proj   = PORTFOLIO_DATA.projects.find(function (p) { return p.id === projId; });
+    if (!proj) return;
 
-    // Get gradient from visual element
-    const visualEl = card.querySelector('.project-visual');
-    let bg = '#1a1a1a';
-    if (visualEl) {
-      const cls = Array.from(visualEl.classList).find(c => c.startsWith('pv-gradient'));
-      if (cls && gradientMap[cls]) bg = gradientMap[cls];
+    // Điền nội dung lightbox
+    lightboxCategory.textContent = proj.category;
+    lightboxTitle.textContent    = proj.title;
+    lightboxDesc.textContent     = proj.desc;
+    lightboxTags.textContent     = proj.tags;
+    lightboxLink.href            = proj.linkBehance || '#';
+
+    // Phần visual: iframe video hoặc gradient
+    if (proj.embedUrl) {
+      lightboxVisual.innerHTML = ''
+        + '<iframe src="' + proj.embedUrl + '" frameborder="0"'
+        + ' allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"'
+        + ' allowfullscreen style="width:100%;height:100%;border:none;"></iframe>';
+    } else {
+      var bg = gradientMap[proj.gradientClass] || '#1a1a1a';
+      lightboxVisual.style.background = bg;
+      lightboxVisual.innerHTML = ''
+        + '<svg viewBox="0 0 60 60" fill="none" style="width:64px;height:64px;opacity:0.4;">'
+        +   '<circle cx="30" cy="30" r="29" stroke="#C5A880" stroke-width="1"/>'
+        +   '<polygon points="24,18 44,30 24,42" fill="#C5A880"/>'
+        + '</svg>';
+      lightboxVisual.style.display        = 'flex';
+      lightboxVisual.style.alignItems     = 'center';
+      lightboxVisual.style.justifyContent = 'center';
     }
-
-    // Get category text
-    const catEl = card.querySelector('.project-category');
-    const cat = catEl ? catEl.textContent : '';
-
-    // Populate lightbox
-    lightboxVisual.style.background = bg;
-    lightboxVisual.style.display = 'flex';
-    lightboxVisual.style.alignItems = 'center';
-    lightboxVisual.style.justifyContent = 'center';
-    lightboxVisual.innerHTML = '<svg viewBox="0 0 60 60" fill="none" style="width:64px;height:64px;opacity:0.4;"><circle cx="30" cy="30" r="29" stroke="#C5A880" stroke-width="1"/><polygon points="24,18 44,30 24,42" fill="#C5A880"/></svg>';
-
-    lightboxCategory.textContent = cat;
-    lightboxTitle.textContent = title;
-    lightboxDesc.textContent = desc;
-    lightboxTags.textContent = tags;
-    lightboxLink.href = link;
 
     lightbox.classList.add('open');
     lightbox.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
-
-    // Focus trap
     lightboxClose.focus();
   }
 
@@ -191,129 +473,111 @@
     lightbox.classList.remove('open');
     lightbox.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
+    // Dừng video nếu có iframe
+    var iframe = lightboxVisual.querySelector('iframe');
+    if (iframe) { iframe.src = iframe.src; } // reload để dừng audio
   }
 
-  // Open on project card click (card or CTA button)
-  document.querySelectorAll('.project-card').forEach(function (card) {
-    card.addEventListener('click', function (e) {
-      openLightbox(card);
+  // Bind click cho project cards (dùng event delegation vì cards render động)
+  var grid = el('projectsGrid');
+  if (grid) {
+    grid.addEventListener('click', function (e) {
+      var card = e.target.closest('.project-card');
+      if (card) openLightbox(card);
     });
-  });
-
-  if (lightboxClose) {
-    lightboxClose.addEventListener('click', closeLightbox);
-  }
-
-  if (lightboxBackdrop) {
-    lightboxBackdrop.addEventListener('click', closeLightbox);
-  }
-
-  // Escape key
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && lightbox.classList.contains('open')) {
-      closeLightbox();
-    }
-  });
-
-  // ─── SHOWREEL PLACEHOLDER INTERACTION ───────────────────────────
-  const playBtn = document.getElementById('playShowreel');
-  const showreelFrame = document.getElementById('showreelFrame');
-
-  if (playBtn && showreelFrame) {
-    function activateShowreel() {
-      // If user provides a YouTube link, replace placeholder with iframe
-      // For now, show a visual pulse effect as placeholder
-      playBtn.style.animation = 'none';
-      const placeholder = showreelFrame.querySelector('.showreel-placeholder');
-      if (placeholder) {
-        placeholder.style.transition = 'opacity 0.3s';
-        placeholder.style.opacity = '0.6';
-        setTimeout(function () {
-          placeholder.style.opacity = '1';
-        }, 300);
-      }
-    }
-
-    playBtn.addEventListener('click', activateShowreel);
-    playBtn.addEventListener('keydown', function (e) {
+    grid.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        activateShowreel();
+        var card = e.target.closest('.project-card');
+        if (card) { e.preventDefault(); openLightbox(card); }
       }
     });
   }
 
-  // ─── SMOOTH SCROLL for anchor links ─────────────────────────────
-  document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
-    anchor.addEventListener('click', function (e) {
-      const targetId = this.getAttribute('href');
-      if (targetId === '#') return;
-      const target = document.querySelector(targetId);
-      if (target) {
-        e.preventDefault();
-        const navH = navbar ? navbar.offsetHeight : 64;
-        const targetY = target.getBoundingClientRect().top + window.scrollY - navH - 20;
-        window.scrollTo({ top: targetY, behavior: 'smooth' });
-      }
-    });
+  if (lightboxClose)    lightboxClose.addEventListener('click', closeLightbox);
+  if (lightboxBackdrop) lightboxBackdrop.addEventListener('click', closeLightbox);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && lightbox.classList.contains('open')) closeLightbox();
   });
 
-  // ─── CURSOR GLOW EFFECT (subtle) ────────────────────────────────
-  const glow = document.createElement('div');
+  // ── 2.7 SHOWREEL PLACEHOLDER (khi chưa có video) ────────────────
+  // Dùng event delegation vì showreel render sau
+  var showreelFrame = el('showreelFrame');
+  if (showreelFrame) {
+    showreelFrame.addEventListener('click', function (e) {
+      var playBtn = e.target.closest('#playShowreel');
+      if (playBtn) {
+        var placeholder = showreelFrame.querySelector('.showreel-placeholder');
+        if (placeholder) {
+          placeholder.style.transition = 'opacity 0.3s';
+          placeholder.style.opacity    = '0.6';
+          setTimeout(function () { placeholder.style.opacity = '1'; }, 300);
+        }
+      }
+    });
+    showreelFrame.addEventListener('keydown', function (e) {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.id === 'playShowreel') {
+        e.preventDefault();
+        e.target.click();
+      }
+    });
+  }
+
+  // ── 2.8 SMOOTH SCROLL ───────────────────────────────────────────
+  document.addEventListener('click', function (e) {
+    var anchor = e.target.closest('a[href^="#"]');
+    if (!anchor) return;
+    var targetId = anchor.getAttribute('href');
+    if (targetId === '#') return;
+    var target = document.querySelector(targetId);
+    if (target) {
+      e.preventDefault();
+      var navH    = navbar ? navbar.offsetHeight : 64;
+      var targetY = target.getBoundingClientRect().top + window.scrollY - navH - 20;
+      window.scrollTo({ top: targetY, behavior: 'smooth' });
+      // Đóng mobile menu nếu đang mở
+      if (mobileMenu && mobileMenu.classList.contains('open')) closeMobileMenu();
+    }
+  });
+
+  // ── 2.9 CURSOR GLOW ─────────────────────────────────────────────
+  var glow = document.createElement('div');
   glow.style.cssText = [
-    'position:fixed',
-    'width:400px',
-    'height:400px',
-    'border-radius:50%',
+    'position:fixed', 'width:400px', 'height:400px', 'border-radius:50%',
     'background:radial-gradient(circle, rgba(197,168,128,0.04) 0%, transparent 70%)',
-    'pointer-events:none',
-    'z-index:0',
-    'transform:translate(-50%,-50%)',
-    'transition:left 0.5s ease, top 0.5s ease',
-    'left:50%',
-    'top:50%',
+    'pointer-events:none', 'z-index:0', 'transform:translate(-50%,-50%)',
+    'transition:left 0.5s ease, top 0.5s ease', 'left:50%', 'top:50%',
   ].join(';');
   document.body.appendChild(glow);
 
-  let glowTicking = false;
+  var glowTicking = false;
   document.addEventListener('mousemove', function (e) {
     if (!glowTicking) {
       requestAnimationFrame(function () {
         glow.style.left = e.clientX + 'px';
-        glow.style.top = e.clientY + 'px';
+        glow.style.top  = e.clientY + 'px';
         glowTicking = false;
       });
       glowTicking = true;
     }
   }, { passive: true });
 
-  // ─── TYPEWRITER for hero slogan ─────────────────────────────────
-  const slogan = document.querySelector('.hero-slogan');
-  if (slogan) {
-    const text = slogan.textContent;
-    slogan.textContent = '';
-    slogan.style.opacity = '1';
+  // ── 2.10 TYPEWRITER EFFECT cho Slogan ───────────────────────────
+  var sloganEl = el('heroSlogan');
+  if (sloganEl) {
+    var text    = sloganEl.dataset.sloganText || '';
+    var charIdx = 0;
+    sloganEl.textContent = '';
 
-    let charIdx = 0;
     function typeChar() {
       if (charIdx < text.length) {
-        slogan.textContent += text[charIdx];
+        sloganEl.textContent += text[charIdx];
         charIdx++;
         setTimeout(typeChar, 38);
       }
     }
-
-    // Start typewriter after hero fade-in
+    // Bắt đầu sau khi hero fade-in xong
     setTimeout(typeChar, 900);
   }
-
-  // ─── PROJECT CARD: Stop CTA click from double-triggering ────────
-  document.querySelectorAll('.project-cta').forEach(function (btn) {
-    btn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      const card = btn.closest('.project-card');
-      if (card) openLightbox(card);
-    });
-  });
 
 })();
