@@ -16,13 +16,13 @@ const PORTFOLIO_DATA = {
   // ──────────────────────────────────────────────────────────────────
   profile: {
     // Họ và tên đầy đủ (viết HOA để hiển thị đúng trên hero)
-    fullName: 'PHAN ĐỨC PHÁT',
+    fullName: 'PHAN DUC PHAT',
 
     // Tên hiển thị chia làm 2 dòng trên hero lớn
     // Dòng 1: phần chữ đặc (solid white)
-    nameLine1: 'PHAN',
+    nameLine1: 'PHAN DUC',
     // Dòng 2: phần chữ rỗng (stroke outline)
-    nameLine2: 'ĐỨC PHÁT',
+    nameLine2: 'PHAT',
 
     // Vai trò / chức danh nghề nghiệp
     role: 'Professional Video Editor & Cameraman | Motion Designer',
@@ -31,7 +31,7 @@ const PORTFOLIO_DATA = {
     slogan: '"Cinematic vision. Technical precision. Elevating every frame."',
 
     // Nơi làm việc hiện tại
-    workplace: 'Silver Swallows Studio — Xưởng phim Én Bạc',
+    workplace: 'Freelancer',
 
     // Địa điểm sinh sống / làm việc
     location: 'Hải Châu, Đà Nẵng, Vietnam',
