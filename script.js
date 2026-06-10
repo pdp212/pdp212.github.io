@@ -206,10 +206,10 @@
     var socials = PORTFOLIO_DATA.contact.socials;
     var icons = PORTFOLIO_DATA.contact.icons;
     if (ctaBehance && socials && socials.behance && icons && icons.behance) {
-      ctaBehance.innerHTML = '<img src="' + icons.behance + '" alt="" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;filter:brightness(0) invert(1);"> View Full Portfolio on Behance ↗';
+      ctaBehance.innerHTML = '<img src="' + icons.behance + '" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:10px;filter:brightness(0) invert(1);"> View Full Portfolio on Behance ↗';
     }
     if (ctaLinkedIn && socials && socials.linkedin && icons && icons.linkedin) {
-      ctaLinkedIn.innerHTML = '<img src="' + icons.linkedin + '" alt="" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;filter:brightness(0) invert(1);"> LinkedIn Profile ↗';
+      ctaLinkedIn.innerHTML = '<img src="' + icons.linkedin + '" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:10px;filter:brightness(0) invert(1);"> LinkedIn Profile ↗';
     }
   }
 
@@ -267,7 +267,7 @@
     if (eduEl) {
       eduEl.innerHTML = a.education.map(function (edu) {
         var iconHtml = edu.icon 
-          ? '<img src="' + edu.icon + '" alt="icon" class="edu-icon-img" style="width:24px;height:24px;object-fit:contain;opacity:0.8;">' 
+          ? '<img src="' + edu.icon + '" alt="icon" class="edu-icon-img" style="width:54px;height:36px;object-fit:contain;opacity:0.9;margin-right:4px;">' 
           : '<span class="edu-icon" aria-hidden="true">◈</span>';
         return ''
           + '<div class="edu-card">'
@@ -294,7 +294,7 @@
       infoEl.innerHTML = ''
         + '<div class="contact-row">'
         +   '<span class="contact-label">'
-        +     (icons.email ? '<img src="' + icons.email + '" class="contact-icon" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:8px;opacity:0.7;">' : '')
+        +     (icons.email ? '<img src="' + icons.email + '" class="contact-icon" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:12px;opacity:0.85;">' : '')
         +     'Email</span>'
         +   '<a href="mailto:' + c.email + '" class="contact-value" id="contactEmail">' + c.email + '</a>'
         + '</div>'
@@ -306,14 +306,14 @@
         + '<div class="contact-divider" aria-hidden="true"></div>'
         + '<div class="contact-row">'
         +   '<span class="contact-label">'
-        +     (icons.location ? '<img src="' + icons.location + '" class="contact-icon" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:8px;opacity:0.7;">' : '')
+        +     (icons.location ? '<img src="' + icons.location + '" class="contact-icon" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:12px;opacity:0.85;">' : '')
         +     'Location</span>'
         +   '<span class="contact-value">' + c.location + '</span>'
         + '</div>'
         + '<div class="contact-divider" aria-hidden="true"></div>'
         + '<div class="contact-links">'
-        +   (c.socials.linkedin ? '<a href="' + c.socials.linkedin + '" target="_blank" rel="noopener noreferrer" class="contact-platform-link" id="linkedinLink">' + (icons.linkedin ? '<img src="' + icons.linkedin + '" class="social-icon" alt="" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;">' : '') + 'LinkedIn ↗</a>' : '')
-        +   (c.socials.behance  ? '<a href="' + c.socials.behance  + '" target="_blank" rel="noopener noreferrer" class="contact-platform-link" id="behanceLink">' + (icons.behance ? '<img src="' + icons.behance + '" class="social-icon" alt="" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;">' : '') + 'Behance ↗</a>'  : '')
+        +   (c.socials.linkedin ? '<a href="' + c.socials.linkedin + '" target="_blank" rel="noopener noreferrer" class="contact-platform-link" id="linkedinLink">' + (icons.linkedin ? '<img src="' + icons.linkedin + '" class="social-icon" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:8px;">' : '') + 'LinkedIn ↗</a>' : '')
+        +   (c.socials.behance  ? '<a href="' + c.socials.behance  + '" target="_blank" rel="noopener noreferrer" class="contact-platform-link" id="behanceLink">' + (icons.behance ? '<img src="' + icons.behance + '" class="social-icon" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:8px;">' : '') + 'Behance ↗</a>'  : '')
         + '</div>';
     }
 
