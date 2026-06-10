@@ -25,7 +25,7 @@ const PORTFOLIO_DATA = {
     nameLine2: 'PHAT',
 
     // Vai trò / chức danh nghề nghiệp
-    role: 'Professional Video Editor & Cameraman | Motion Designer',
+    role: 'Video Editor & Cameraman | Motion Designer',
 
     // Câu slogan cá nhân (hiện thị dưới dạng hiệu ứng typewriter)
     slogan: '"Cinematic vision. Technical precision. Elevating every frame."',
@@ -34,7 +34,7 @@ const PORTFOLIO_DATA = {
     workplace: 'Freelancer',
 
     // Địa điểm sinh sống / làm việc
-    location: 'Hải Châu, Đà Nẵng, Vietnam',
+    location: 'Hai Chau, Da Nang, Vietnam',
 
     // Chữ trang trí dọc bên phải hero (dạng vertical text)
     heroVertText: 'PRODUCTION SPECIALIST',
@@ -53,7 +53,7 @@ const PORTFOLIO_DATA = {
     embedUrl: null,
 
     // Tiêu đề hiển thị trên placeholder (khi chưa có video)
-    placeholderTitle: 'SHOWREEL 2024',
+    placeholderTitle: 'SHOWREEL',
 
     // Mô tả ngắn trên placeholder
     placeholderSub: 'Cinematic · Commercial · Motion',
@@ -91,18 +91,6 @@ const PORTFOLIO_DATA = {
       gradientClass: 'pv-gradient-1',
     },
     {
-      id: 'commercial-tvc-danang',
-      title: 'Commercial TVC — Đà Nẵng Brand',
-      category: 'Commercial Production',
-      desc: 'Quay và dựng TVC thương mại cho thương hiệu địa phương tại Đà Nẵng. Adobe Premiere Pro + After Effects Motion Graphics.',
-      tags: 'TVC · Motion Graphics · After Effects',
-      size: 'medium',
-      thumbnail: null,
-      embedUrl: null,
-      linkBehance: 'https://www.behance.net/pdp23',
-      gradientClass: 'pv-gradient-2',
-    },
-    {
       id: 'motion-design-title-sequence',
       title: 'Motion Design — Title Sequence',
       category: 'Motion Design',
@@ -125,18 +113,6 @@ const PORTFOLIO_DATA = {
       embedUrl: null,
       linkBehance: 'https://www.behance.net/pdp23',
       gradientClass: 'pv-gradient-4',
-    },
-    {
-      id: 'graphic-design-visual-identity',
-      title: 'Graphic Design — Visual Identity',
-      category: 'Graphic Design',
-      desc: 'Thiết kế bộ nhận diện thương hiệu đồng bộ: logo, color palette, typography system cho thương hiệu sáng tạo tại miền Trung.',
-      tags: 'Graphic Design · Branding · Identity',
-      size: 'small',
-      thumbnail: null,
-      embedUrl: null,
-      linkBehance: 'https://www.behance.net/pdp23',
-      gradientClass: 'pv-gradient-5',
     },
 
     // ── THÊM DỰ ÁN MỚI Ở ĐÂY ──
