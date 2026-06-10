@@ -267,7 +267,7 @@
     if (eduEl) {
       eduEl.innerHTML = a.education.map(function (edu) {
         var iconHtml = edu.icon 
-          ? '<img src="' + edu.icon + '" alt="icon" class="edu-icon-img" style="width:54px;height:36px;object-fit:contain;opacity:0.9;margin-right:4px;">' 
+          ? '<img src="' + edu.icon + '" alt="icon" class="edu-icon-img" style="width:70px;height:70px;object-fit:contain;opacity:0.9;margin-right:4px;">' 
           : '<span class="edu-icon" aria-hidden="true">◈</span>';
         return ''
           + '<div class="edu-card">'
@@ -312,8 +312,8 @@
         + '</div>'
         + '<div class="contact-divider" aria-hidden="true"></div>'
         + '<div class="contact-links">'
-        +   (c.socials.linkedin ? '<a href="' + c.socials.linkedin + '" target="_blank" rel="noopener noreferrer" class="contact-platform-link" id="linkedinLink">' + (icons.linkedin ? '<img src="' + icons.linkedin + '" class="social-icon" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:8px;">' : '') + 'LinkedIn ↗</a>' : '')
-        +   (c.socials.behance  ? '<a href="' + c.socials.behance  + '" target="_blank" rel="noopener noreferrer" class="contact-platform-link" id="behanceLink">' + (icons.behance ? '<img src="' + icons.behance + '" class="social-icon" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:8px;">' : '') + 'Behance ↗</a>'  : '')
+        +   (c.socials.linkedin ? '<a href="' + c.socials.linkedin + '" target="_blank" rel="noopener noreferrer" class="contact-platform-link" id="linkedinLink">' + (icons.linkedin ? '<img src="' + icons.linkedin + '" class="social-icon" alt="" style="width:30px;height:30px;vertical-align:middle;margin-right:8px;">' : '') + 'LinkedIn ↗</a>' : '')
+        +   (c.socials.behance  ? '<a href="' + c.socials.behance  + '" target="_blank" rel="noopener noreferrer" class="contact-platform-link" id="behanceLink">' + (icons.behance ? '<img src="' + icons.behance + '" class="social-icon" alt="" style="width:30px;height:30px;vertical-align:middle;margin-right:8px;">' : '') + 'Behance ↗</a>'  : '')
         + '</div>';
     }
 
