@@ -1,14 +1,6 @@
 /* ════════════════════════════════════════════════════════════════════
-   script.js — ENGINE RENDER DỮ LIỆU + TƯƠNG TÁC
-   Portfolio: Phan Đức Phát | pdp212.github.io
-
-   File này làm 2 việc:
-   1. RENDER: Đọc dữ liệu từ PORTFOLIO_DATA (data.js) và
-              điền vào các phần tử HTML trong index.html
-   2. INTERACT: Xử lý mọi tương tác (navbar, lightbox, scroll, v.v.)
-
-   Bạn KHÔNG cần sửa file này trừ khi muốn thay đổi cách hoạt động.
-   Để thay nội dung, hãy sửa data.js.
+   script.js — ENGINE RENDER + INTERACTIONS v2 (Enhanced)
+   Portfolio: pdp212.github.io
    ════════════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -115,15 +107,42 @@
         +   '<div class="showreel-corner top-right"   aria-hidden="true"></div>'
         +   '<div class="showreel-corner bottom-left" aria-hidden="true"></div>'
         +   '<div class="showreel-corner bottom-right"aria-hidden="true"></div>'
+        +   '<div class="showreel-counter" aria-hidden="true">01 · 00:00:00 · REC</div>'
         + '</div>';
     }
   }
 
-  // ── 1.4 PROJECTS GRID ───────────────────────────────────────────
-  // Map kích thước card → CSS class
-  var sizeClassMap = { large: 'card-large', medium: 'card-medium', small: 'card-small' };
+  // ── 1.4 TICKER STRIP ────────────────────────────────────────────
+  function renderTicker() {
+    var ticker = el('tickerStrip');
+    if (!ticker) return;
 
-  // Map delay theo thứ tự dự án
+    var p = PORTFOLIO_DATA.profile;
+    var items = [
+      p.role,
+      p.workplace,
+      p.location,
+      'Cinematography',
+      'Color Grading',
+      'Motion Design',
+      'AI Workflow',
+      'Python · Manim',
+      'DaVinci Resolve',
+      'After Effects',
+    ];
+
+    // Duplicate for seamless loop
+    var all = items.concat(items);
+    var html = '<div class="ticker-inner" aria-hidden="true">';
+    all.forEach(function (item) {
+      html += '<span class="ticker-item">' + item + '</span>';
+    });
+    html += '</div>';
+    ticker.innerHTML = html;
+  }
+
+  // ── 1.5 PROJECTS GRID ───────────────────────────────────────────
+  var sizeClassMap = { large: 'card-large', medium: 'card-medium', small: 'card-small' };
   var delayList = [0, 100, 150, 200, 250, 300, 350, 400];
 
   function renderProjects() {
@@ -137,10 +156,9 @@
       var sizeClass = sizeClassMap[proj.size] || 'card-medium';
       var delay     = delayList[idx] || 0;
 
-      // Visual: ưu tiên thumbnail → gradient
       var visualContent = '';
       if (proj.thumbnail) {
-        visualContent = '<img src="' + proj.thumbnail + '" alt="' + proj.title + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;">';
+        visualContent = '<img src="' + proj.thumbnail + '" alt="' + proj.title + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">';
       }
 
       html += ''
@@ -148,13 +166,15 @@
         +   ' class="project-card ' + sizeClass + ' fade-in"'
         +   ' data-delay="' + delay + '"'
         +   ' data-id="' + proj.id + '"'
-        +   ' role="listitem"'
-        +   ' tabindex="0"'
+        +   ' role="listitem" tabindex="0"'
         +   ' aria-label="Dự án: ' + proj.title + '"'
         + '>'
         +   '<div class="project-visual ' + proj.gradientClass + '">'
         +     visualContent
         +     '<div class="project-overlay">'
+        +       '<span class="overlay-category">' + proj.category + '</span>'
+        +       '<span class="overlay-title">'    + proj.title    + '</span>'
+        +       '<span class="overlay-cta">Open Project ↗</span>'
         +       '<div class="project-play-icon" aria-hidden="true">' + svgPlayIcon(40) + '</div>'
         +     '</div>'
         +     '<div class="project-grain" aria-hidden="true"></div>'
@@ -210,13 +230,16 @@
       skillsEl.innerHTML = skillHtml;
     }
 
-    // Skill bars
+    // Skill bars với phần trăm
     var barsEl = el('skillsGrid');
     if (barsEl) {
       barsEl.innerHTML = a.skillBars.map(function (bar) {
         return ''
           + '<div class="skill-bar-item">'
-          +   '<span class="skill-bar-label">' + bar.label + '</span>'
+          +   '<div class="skill-bar-header">'
+          +     '<span class="skill-bar-label">' + bar.label + '</span>'
+          +     '<span class="skill-bar-percent">' + bar.level + '%</span>'
+          +   '</div>'
           +   '<div class="skill-bar">'
           +     '<div class="skill-fill" style="--fill:' + bar.level + '%"></div>'
           +   '</div>'
@@ -282,18 +305,29 @@
     }
   }
 
-  // ── 1.7 CHẠY TẤT CẢ RENDER ──────────────────────────────────────
+  // ── 1.8 CHẠY TẤT CẢ RENDER ──────────────────────────────────────
   function renderAll() {
     renderMeta();
     renderHero();
     renderShowreel();
+    renderTicker();
     renderProjects();
     renderAbout();
     renderContact();
   }
 
-  // Chạy render ngay (data.js đã được load trước script.js)
   renderAll();
+
+  // ── 1.9 PAGE REVEAL ──────────────────────────────────────────────
+  var revealEl = el('pageReveal');
+  if (revealEl) {
+    setTimeout(function () {
+      revealEl.classList.add('done');
+      document.body.classList.remove('loading');
+    }, 1400);
+  } else {
+    document.body.classList.remove('loading');
+  }
 
 
   // ══════════════════════════════════════════════════════════════════
@@ -321,6 +355,31 @@
     if (!navTicking) {
       requestAnimationFrame(updateNavbar);
       navTicking = true;
+    }
+    // Scrolled class for navbar background
+    if (navbar) {
+      if (window.scrollY > 20) navbar.classList.add('scrolled');
+      else navbar.classList.remove('scrolled');
+    }
+  }, { passive: true });
+
+  // ── HERO PARALLAX on scroll ──────────────────────────────────────
+  var heroName = document.querySelector('.hero-name');
+  var heroMeta = document.querySelector('.hero-meta');
+  var heroPTicking = false;
+
+  window.addEventListener('scroll', function () {
+    if (!heroPTicking) {
+      requestAnimationFrame(function () {
+        var sy = window.scrollY;
+        if (sy < window.innerHeight) {
+          var p = sy * 0.15;
+          if (heroName) heroName.style.transform = 'translateY(' + p + 'px)';
+          if (heroMeta) heroMeta.style.opacity = 1 - sy / (window.innerHeight * 0.6);
+        }
+        heroPTicking = false;
+      });
+      heroPTicking = true;
     }
   }, { passive: true });
 

@@ -3,17 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!--
-    ════════════════════════════════════════════════════════════════════
-    index.html — KHUNG GIAO DIỆN (Shell)
-    Nội dung thực tế được điền tự động từ data.js qua script.js.
-    Bạn KHÔNG cần chỉnh sửa file này để thay đổi nội dung.
-    Chỉ chỉnh sửa data.js là đủ!
-    ════════════════════════════════════════════════════════════════════
-  -->
-
-  <!-- ═ SEO Meta (tự động điền từ data.js) ═ -->
-  <title id="pageTitle">Portfolio — Phan Đức Phát</title>
+  <title id="pageTitle">Portfolio — Phan Duc Phat</title>
   <meta name="description" id="pageDesc" content="" />
   <meta name="keywords" content="Phan Duc Phat, Video Editor, Cameraman, Motion Designer, Da Nang, Silver Swallows Studio, Adobe Premiere, After Effects, DaVinci Resolve" />
   <meta property="og:title" id="ogTitle" content="" />
@@ -21,20 +11,19 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://pdp212.github.io" />
 
-  <!-- ═ Google Fonts ═ -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body class="loading">
 
-  <!-- ═══════════════════════════════════════ NAV ═══════════════════════════════════════ -->
-  <!--
-    Nav được giữ tĩnh vì các mục menu không thay đổi.
-    Nếu muốn đổi tên menu, sửa trực tiếp tại đây.
-  -->
+  <!-- ═ PAGE REVEAL ═ -->
+  <div class="page-reveal" id="pageReveal">
+    <span class="reveal-logo">PDP</span>
+  </div>
+
+  <!-- ═ NAV ═ -->
   <nav id="navbar" class="navbar" role="navigation" aria-label="Main navigation">
     <div class="nav-inner">
       <a href="#hero" class="nav-logo" aria-label="Back to top">PDP</a>
@@ -62,14 +51,11 @@
   <section id="hero" class="section hero-section" aria-label="Hero">
     <div class="hero-inner">
 
-      <!-- Meta: số thứ tự + địa điểm -->
       <div class="hero-meta fade-in" data-delay="0">
         <span class="section-number">01.</span>
-        <!-- Địa điểm → điền từ data.profile.location -->
         <span class="hero-location" id="heroLocation"></span>
       </div>
 
-      <!-- Tên lớn → điền từ data.profile.nameLine1 & nameLine2 -->
       <h1 class="hero-name fade-in" data-delay="100">
         <span class="hero-name-line" id="heroNameLine1"></span>
         <span class="hero-name-line accent-stroke" id="heroNameLine2"></span>
@@ -78,63 +64,50 @@
       <div class="hero-divider fade-in" data-delay="200" aria-hidden="true"></div>
 
       <div class="hero-sub fade-in" data-delay="300">
-        <!-- Vai trò → điền từ data.profile.role -->
-        <p class="hero-role" id="heroRole"></p>
-        <!-- Slogan → điền từ data.profile.slogan (hiệu ứng typewriter) -->
-        <p class="hero-slogan" id="heroSlogan"></p>
+        <p class="hero-role"   id="heroRole"></p>
+        <p class="hero-slogan" id="heroSlogan" data-slogan-text=""></p>
       </div>
 
-      <!-- Nơi làm việc → điền từ data.profile.workplace -->
       <div class="hero-workplace fade-in" data-delay="400">
         <span class="workplace-label">Currently at</span>
         <span class="workplace-name" id="heroWorkplace"></span>
       </div>
 
-      <!-- Showreel → tự động nhúng iframe nếu có embedUrl, hoặc hiện placeholder -->
+      <!-- Ticker strip — rendered by script.js -->
+      <div class="ticker-strip fade-in" data-delay="450" id="tickerStrip" aria-hidden="true"></div>
+
+      <!-- Showreel -->
       <div class="showreel-wrapper fade-in" data-delay="500">
         <div class="showreel-label">
           <span class="showreel-tag">SHOWREEL</span>
           <div class="showreel-line" aria-hidden="true"></div>
         </div>
-        <!-- Nội dung showreel được render bởi script.js dựa trên data.showreel -->
         <div class="showreel-frame" id="showreelFrame" role="region" aria-label="Showreel video"></div>
       </div>
 
     </div>
-    <!-- Chữ dọc trang trí → điền từ data.profile.heroVertText -->
     <div class="hero-vert-text" id="heroVertText" aria-hidden="true"></div>
   </section>
 
   <!-- ═══════════════════════════════════════ 02. PROJECTS ═══════════════════════════════════════ -->
   <section id="projects" class="section projects-section" aria-label="Projects">
-    <div class="section-header fade-in">
+    <div class="section-header fade-in" data-num="02">
       <span class="section-number">02.</span>
       <h2 class="section-title">Selected Projects</h2>
       <div class="section-header-line" aria-hidden="true"></div>
     </div>
 
-    <!-- Lưới dự án → được render động từ mảng data.projects -->
     <div class="projects-grid" id="projectsGrid" role="list"></div>
 
-    <!-- Nút CTA → điền link từ data.contact.socials -->
     <div class="projects-cta-row fade-in">
-      <a id="ctaBehance" href="#" target="_blank" rel="noopener noreferrer" class="btn-outline">
-        View Full Portfolio on Behance ↗
-      </a>
-      <a id="ctaLinkedIn" href="#" target="_blank" rel="noopener noreferrer" class="btn-outline">
-        LinkedIn Profile ↗
-      </a>
+      <a id="ctaBehance"  href="#" target="_blank" rel="noopener noreferrer" class="btn-outline">View Full Portfolio on Behance ↗</a>
+      <a id="ctaLinkedIn" href="#" target="_blank" rel="noopener noreferrer" class="btn-outline">LinkedIn Profile ↗</a>
     </div>
   </section>
 
   <!-- ═══════════════════════════════════════ 03. AI GENERATIVE ═══════════════════════════════════════ -->
-  <!--
-    Section AI Generative giữ nội dung cố định vì đây là
-    bản mô tả năng lực đặc thù, ít thay đổi.
-    Nếu muốn sửa, chỉnh trực tiếp tại đây.
-  -->
   <section id="ai-generative" class="section ai-section" aria-label="AI Generative">
-    <div class="section-header fade-in">
+    <div class="section-header fade-in" data-num="03">
       <span class="section-number">03.</span>
       <h2 class="section-title">AI Generative</h2>
       <div class="section-header-line" aria-hidden="true"></div>
@@ -155,43 +128,30 @@
           <div class="ai-pillar-number" aria-hidden="true">I</div>
           <div class="ai-pillar-content">
             <h4 class="ai-pillar-title">AI Workflow Automation</h4>
-            <p class="ai-pillar-desc">
-              Tự động hóa các tác vụ lặp lại trong post-production: auto-transcription,
-              smart cut, scene detection và batch export — rút ngắn thời gian hậu kỳ xuống
-              đến 60% mà vẫn giữ chất lượng cinematic chuẩn.
-            </p>
+            <p class="ai-pillar-desc">Tự động hóa các tác vụ lặp lại trong post-production: auto-transcription, smart cut, scene detection và batch export — rút ngắn thời gian hậu kỳ đến 60% mà vẫn giữ chất lượng cinematic chuẩn.</p>
           </div>
         </div>
         <div class="ai-pillar fade-in" data-delay="100">
           <div class="ai-pillar-number" aria-hidden="true">II</div>
           <div class="ai-pillar-content">
             <h4 class="ai-pillar-title">Generative AI Tools</h4>
-            <p class="ai-pillar-desc">
-              Ứng dụng các mô hình AI generative (Midjourney, Runway, ElevenLabs) để tạo
-              concept art, generate B-roll, voice synthesis — mở rộng khả năng sản xuất
-              mà không cần tăng ngân sách.
-            </p>
+            <p class="ai-pillar-desc">Ứng dụng các mô hình AI generative (Midjourney, Runway, ElevenLabs) để tạo concept art, generate B-roll, voice synthesis — mở rộng khả năng sản xuất mà không cần tăng ngân sách.</p>
           </div>
         </div>
         <div class="ai-pillar fade-in" data-delay="200">
           <div class="ai-pillar-number" aria-hidden="true">III</div>
           <div class="ai-pillar-content">
             <h4 class="ai-pillar-title">Vibe Coding — Python &amp; Manim</h4>
-            <p class="ai-pillar-desc">
-              Kỹ thuật <em>"Vibe Coding"</em> với thư viện <strong>Python Manim</strong> để lập trình
-              chuyển động toán học chính xác: data visualization, kinetic typography,
-              và motion graphics kỹ thuật số — những hiệu ứng mà After Effects
-              không thể tái hiện bằng tay.
-            </p>
+            <p class="ai-pillar-desc">Kỹ thuật <em>"Vibe Coding"</em> với thư viện <strong>Python Manim</strong> để lập trình chuyển động toán học chính xác: data visualization, kinetic typography, và motion graphics kỹ thuật số.</p>
           </div>
         </div>
       </div>
 
       <div class="ai-code-block fade-in" data-delay="300" role="img" aria-label="Python Manim code example">
         <div class="code-header">
-          <span class="code-dot red" aria-hidden="true"></span>
+          <span class="code-dot red"    aria-hidden="true"></span>
           <span class="code-dot yellow" aria-hidden="true"></span>
-          <span class="code-dot green" aria-hidden="true"></span>
+          <span class="code-dot green"  aria-hidden="true"></span>
           <span class="code-filename">enzyme_action.py — Manim Scene</span>
         </div>
         <pre class="code-body"><code><span class="code-kw">from</span> manim <span class="code-kw">import</span> *
@@ -199,7 +159,7 @@
 <span class="code-kw">class</span> <span class="code-fn">CinematicTitle</span>(Scene):
     <span class="code-kw">def</span> <span class="code-fn">construct</span>(self):
         title = Text(
-            <span class="code-str">"PHAN ĐỨC PHÁT"</span>,
+            <span class="code-str">"PHAN DUC PHAT"</span>,
             font=<span class="code-str">"Playfair Display"</span>,
             color=<span class="code-str">"#C5A880"</span>
         )
@@ -222,29 +182,23 @@
 
   <!-- ═══════════════════════════════════════ 04. ABOUT ═══════════════════════════════════════ -->
   <section id="about" class="section about-section" aria-label="About and Skills">
-    <div class="section-header fade-in">
+    <div class="section-header fade-in" data-num="04">
       <span class="section-number">04.</span>
       <h2 class="section-title">About &amp; Skills</h2>
       <div class="section-header-line" aria-hidden="true"></div>
     </div>
 
     <div class="about-layout">
-      <!-- Cột trái: bio text → render từ data.about -->
       <div class="about-text fade-in" data-delay="0">
         <p class="about-eyebrow" id="aboutEyebrow"></p>
         <h3 class="about-headline" id="aboutHeadline"></h3>
-        <!-- Các đoạn bio → render từ data.about.bio -->
         <div class="about-body" id="aboutBody"></div>
       </div>
 
-      <!-- Cột phải: skills + education → render từ data.about -->
       <div class="about-skills fade-in" data-delay="200">
         <p class="skills-eyebrow">Core Competencies</p>
-        <!-- Danh sách kỹ năng text → render từ data.about.skills -->
         <div class="skills-text" id="skillsText" role="list"></div>
-        <!-- Skill bars → render từ data.about.skillBars -->
         <div class="skills-grid" id="skillsGrid" aria-hidden="true"></div>
-        <!-- Education cards → render từ data.about.education -->
         <div class="education-cards" id="educationCards"></div>
       </div>
     </div>
@@ -252,7 +206,7 @@
 
   <!-- ═══════════════════════════════════════ 05. CONTACT ═══════════════════════════════════════ -->
   <section id="contact" class="section contact-section" aria-label="Contact">
-    <div class="section-header fade-in">
+    <div class="section-header fade-in" data-num="05">
       <span class="section-number">05.</span>
       <h2 class="section-title">Contact</h2>
       <div class="section-header-line" aria-hidden="true"></div>
@@ -262,18 +216,15 @@
       <div class="contact-headline fade-in" data-delay="0">
         <h3 class="contact-big">Let's create<br/><em>something</em><br/>extraordinary.</h3>
       </div>
-
-      <!-- Thông tin liên hệ → render từ data.contact -->
       <div class="contact-info fade-in" data-delay="200" id="contactInfo"></div>
     </div>
 
-    <!-- Footer → render từ data.profile & data.contact -->
     <footer class="site-footer" role="contentinfo">
       <div class="footer-inner" id="footerInner"></div>
     </footer>
   </section>
 
-  <!-- ═══════════════════════════════════════ LIGHTBOX ═══════════════════════════════════════ -->
+  <!-- ═ LIGHTBOX ═ -->
   <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Project detail" aria-hidden="true">
     <div class="lightbox-backdrop" id="lightboxBackdrop"></div>
     <div class="lightbox-panel">
@@ -285,15 +236,12 @@
           <h3 class="lightbox-title"   id="lightboxTitle"></h3>
           <p class="lightbox-desc"     id="lightboxDesc"></p>
           <p class="lightbox-tags"     id="lightboxTags"></p>
-          <a href="#" class="btn-accent" id="lightboxLink" target="_blank" rel="noopener noreferrer">
-            View on Behance ↗
-          </a>
+          <a href="#" class="btn-accent" id="lightboxLink" target="_blank" rel="noopener noreferrer">View on Behance ↗</a>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ═ Script: data trước, sau đó mới chạy render + interactions ═ -->
   <script src="data.js"></script>
   <script src="script.js"></script>
 </body>
