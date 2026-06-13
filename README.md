@@ -6,8 +6,7 @@
 &nbsp;·&nbsp;
 **📦 Repo:** [github.com/pdp212/pdp212.github.io](https://github.com/pdp212/pdp212.github.io)
 
-*Professional Video Editor & Cameraman | Motion Designer*  
-*Silver Swallows Studio — Xưởng phim Én Bạc, Đà Nẵng*
+*Professional Video Editor & Cameraman | Motion Designer*
 
 </div>
 
