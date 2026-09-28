@@ -5,14 +5,14 @@
 
 /* ─── DESIGN TOKENS ─────────────────────────────────────────────── */
 :root {
-  --bg:           #0e0e0e;
-  --bg-2:         #161616;
-  --text:         #F5F5F7;
-  --secondary:    #8E8E93;
+  --bg:           #000000;
+  --bg-2:         #0d0d0d;
+  --text:         #FFFFFF;
+  --secondary:    #888888;
   --accent:       #C5A880;
-  --accent-dim:   rgba(197, 168, 128, 0.15);
-  --border:       rgba(142, 142, 147, 0.18);
-  --border-solid: #8E8E93;
+  --accent-dim:   rgba(197, 168, 128, 0.12);
+  --border:       rgba(255, 255, 255, 0.1);
+  --border-solid: #444444;
 
   --font-serif: 'Playfair Display', Georgia, serif;
   --font-sans:  'Inter', 'Helvetica Neue', Helvetica, sans-serif;
@@ -327,6 +327,50 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 700; line-height: 1.1;
   50%       { opacity: 0.4; transform: scale(0.7); }
 }
 
+/* ── N° BADGE on project visuals ────────────────────────────────── */
+.project-num-badge {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.35);
+  z-index: 4;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── P: / C: metadata rows ───────────────────────────────────────── */
+.project-meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+.project-meta-label {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  opacity: 0.7;
+  flex-shrink: 0;
+  min-width: 1.2rem;
+}
+
+/* ── BIOS CURSOR blink ───────────────────────────────────────────── */
+.bios-cursor {
+  color: #00ff41;
+  animation: biosBlink 0.8s step-end infinite;
+}
+@keyframes biosBlink {
+  50% { opacity: 0; }
+}
+
+/* Section border tweak for pure black */
+.section + .section { border-top: 1px solid rgba(255,255,255,0.07); }
+
+
 .hero-name {
   font-family: var(--font-sans);
   font-size: clamp(4.5rem, 13vw, 12rem);
@@ -335,6 +379,7 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 700; line-height: 1.1;
   line-height: 0.88;
   margin-bottom: var(--spacing-md);
 }
+
 
 .hero-name-line { display: block; }
 

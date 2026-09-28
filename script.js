@@ -165,6 +165,7 @@
     projects.forEach(function (proj, idx) {
       var sizeClass = sizeClassMap[proj.size] || 'card-medium';
       var delay     = delayList[idx] || 0;
+      var numStr    = 'N°' + String(idx + 1).padStart(2, '0');
 
       var visualContent = '';
       if (proj.thumbnail) {
@@ -188,11 +189,18 @@
         +       '<div class="project-play-icon" aria-hidden="true">' + svgPlayIcon(40) + '</div>'
         +     '</div>'
         +     '<div class="project-grain" aria-hidden="true"></div>'
+        +     '<span class="project-num-badge" aria-hidden="true">' + numStr + '</span>'
         +   '</div>'
         +   '<div class="project-info">'
-        +     '<p class="project-category">' + proj.category + '</p>'
-        +     '<h3 class="project-title">'   + proj.title    + '</h3>'
-        +     '<p class="project-tags">'     + proj.tags     + '</p>'
+        +     '<div class="project-meta-row">'
+        +       '<span class="project-meta-label">P:</span>'
+        +       '<h3 class="project-title">' + proj.title + '</h3>'
+        +     '</div>'
+        +     '<div class="project-meta-row">'
+        +       '<span class="project-meta-label">C:</span>'
+        +       '<p class="project-category">' + proj.category + '</p>'
+        +     '</div>'
+        +     '<p class="project-tags">' + proj.tags + '</p>'
         +     '<button class="project-cta" aria-label="Xem dự án ' + proj.title + '">View Project ↗</button>'
         +   '</div>'
         + '</article>';
