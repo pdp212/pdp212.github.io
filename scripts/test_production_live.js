@@ -12,11 +12,12 @@ async function sleep(ms) {
 async function run() {
   console.log('\n=== RUNNING PRODUCTION LIVE SMOKE TEST (https://pdp212.github.io/) ===\n');
 
+  const port = 9240 + Math.floor(Math.random() * 50);
   const chromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
   const chromeProcess = spawn(chromePath, [
     '--headless=new',
     '--disable-gpu',
-    '--remote-debugging-port=9240',
+    '--remote-debugging-port=' + port,
     '--user-data-dir=/tmp/test_chrome_prod_' + Date.now(),
     'https://pdp212.github.io/#home',
   ]);
@@ -27,7 +28,7 @@ async function run() {
     for (let i = 0; i < 20; i++) {
       await sleep(400);
       try {
-        const tabsRes = await fetch('http://127.0.0.1:9240/json/list');
+        const tabsRes = await fetch('http://127.0.0.1:' + port + '/json/list');
         const tabs = await tabsRes.json();
         pageTab = tabs.find(t => t.type === 'page');
         if (pageTab) break;
@@ -59,6 +60,7 @@ async function run() {
 
     await new Promise(resolve => ws.onopen = resolve);
     await send('Network.enable');
+    await send('Network.setCacheDisabled', { cacheDisabled: true });
     await send('Page.enable');
     await send('Console.enable');
 
