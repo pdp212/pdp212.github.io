@@ -1,0 +1,26 @@
+[
+  {
+    "key": "WED_PHUNGTUONG.mp4",
+    "tag": "WED",
+    "name": "PHUNGTUONG",
+    "url": "assets/videos/projects/WED_PHUNGTUONG.mp4"
+  },
+  {
+    "key": "MOTION_BRAND_FILM.mp4",
+    "tag": "MOTION",
+    "name": "BRAND_FILM",
+    "url": "assets/videos/projects/MOTION_BRAND_FILM.mp4"
+  },
+  {
+    "key": "MV_SUMMER_NIGHT.mp4",
+    "tag": "MV",
+    "name": "SUMMER_NIGHT",
+    "url": "assets/videos/projects/MV_SUMMER_NIGHT.mp4"
+  },
+  {
+    "key": "DOC_STREET_DN.mp4",
+    "tag": "DOC",
+    "name": "STREET_DN",
+    "url": "assets/videos/projects/DOC_STREET_DN.mp4"
+  }
+]

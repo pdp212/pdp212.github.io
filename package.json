@@ -1,0 +1,20 @@
+{
+  "name": "pdp-portfolio",
+  "version": "2.0.0",
+  "description": "Portfolio of Phan Duc Phat — Video Editor & Camera Operator | Motion Designer",
+  "private": true,
+  "scripts": {
+    "start": "npx -y serve .",
+    "validate": "node scripts/validate.js",
+    "test": "node scripts/validate.js",
+    "test:transitions": "node scripts/test_transitions.js"
+  },
+  "keywords": [
+    "portfolio",
+    "video-editor",
+    "motion-design",
+    "cinematography"
+  ],
+  "author": "Phan Duc Phat <phanducphat2310@gmail.com>",
+  "license": "MIT"
+}

@@ -5,222 +5,91 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title id="pageTitle">Portfolio — Phan Duc Phat</title>
   <meta name="description" id="pageDesc" content="" />
-  <meta name="keywords" content="Phan Duc Phat, Video Editor, Cameraman, Motion Designer, Da Nang, Silver Swallows Studio, Adobe Premiere, After Effects, DaVinci Resolve" />
+  <meta name="keywords" content="Phan Duc Phat, Video Editor, Camera Operator, Motion Designer, Hải Châu, Đà Nẵng, Silver Swallows Studio, Adobe Premiere, After Effects, DaVinci Resolve, Generative AI" />
   <meta property="og:title" id="ogTitle" content="" />
-  <meta property="og:description" content="Cinematic vision. Technical precision. Elevating every frame." />
+  <meta property="og:description" content="Technical precision. Cinematic vision. Elevating every frame." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://pdp212.github.io" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="canonical" href="https://pdp212.github.io" />
+  <link rel="icon" href="assets/images/profile/logo-pdp-white.png" type="image/png" />
 
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Phan Duc Phat",
+    "url": "https://pdp212.github.io",
+    "jobTitle": "Video Editor & Camera Operator | Motion Designer",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "Silver Swallows Studio"
+    },
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Hải Châu, Đà Nẵng",
+      "addressCountry": "VN"
+    },
+    "sameAs": [
+      "https://www.linkedin.com/in/phanducphat23",
+      "https://www.behance.net/pdp23"
+    ]
+  }
+  </script>
+
+  <!-- Typography: ONLY Roboto -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="loading">
 
-  <!-- ═ BIOS LOADING SCREEN (populated by effects.js) ═ -->
-  <div class="page-reveal" id="pageReveal"></div>
+  <!-- ═ PAGE REVEAL ═ -->
+  <div class="page-reveal" id="pageReveal">
+    <span class="reveal-logo">PDP</span>
+  </div>
 
   <!-- ═ NAV ═ -->
   <nav id="navbar" class="navbar" role="navigation" aria-label="Main navigation">
     <div class="nav-inner">
-      <a href="#hero" class="nav-logo" aria-label="Back to top">PDP</a>
+      <a href="#home" class="nav-logo" aria-label="PDP — Back to Home">PDP</a>
       <ul class="nav-links" role="list">
-        <li><a href="#hero"          class="nav-link">Hero</a></li>
-        <li><a href="#projects"      class="nav-link">Projects</a></li>
-        <li><a href="#ai-generative" class="nav-link">AI Generative</a></li>
-        <li><a href="#about"         class="nav-link">About</a></li>
-        <li><a href="#contact"       class="nav-link">Contact</a></li>
+        <li><a href="#home" class="nav-link active" aria-current="page">Home</a></li>
+        <li><a href="#work" class="nav-link">Work</a></li>
+        <li><a href="#profile" class="nav-link">Profile</a></li>
+        <li><a href="#contact" class="nav-link">Contact</a></li>
       </ul>
       <button class="nav-burger" id="navBurger" aria-label="Open menu" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
     </div>
     <div class="nav-mobile" id="navMobile" aria-hidden="true">
-      <a href="#hero"          class="nav-mobile-link">Hero</a>
-      <a href="#projects"      class="nav-mobile-link">Projects</a>
-      <a href="#ai-generative" class="nav-mobile-link">AI Generative</a>
-      <a href="#about"         class="nav-mobile-link">About</a>
-      <a href="#contact"       class="nav-mobile-link">Contact</a>
+      <a href="#home" class="nav-mobile-link">Home</a>
+      <a href="#work" class="nav-mobile-link">Work</a>
+      <a href="#profile" class="nav-mobile-link">Profile</a>
+      <a href="#contact" class="nav-mobile-link">Contact</a>
     </div>
   </nav>
 
-  <!-- ═══════════════════════════════════════ 01. HERO ═══════════════════════════════════════ -->
-  <section id="hero" class="section hero-section" aria-label="Hero">
-    <div class="hero-inner">
+  <!-- ═ 4-PAGE SPA VIEWS ═ -->
+  <main id="appContent" class="app-content">
+    <div id="page-home" class="page-view active" role="region" aria-label="Home page"></div>
+    <div id="page-work" class="page-view" role="region" aria-label="Work portfolio page" aria-hidden="true"></div>
+    <div id="page-profile" class="page-view" role="region" aria-label="Profile and biography page" aria-hidden="true"></div>
+    <div id="page-contact" class="page-view" role="region" aria-label="Contact information page" aria-hidden="true"></div>
+  </main>
 
-      <div class="hero-meta fade-in" data-delay="0">
-        <span class="section-number">01.</span>
-        <span class="hero-location" id="heroLocation"></span>
-      </div>
+  <!-- ═ CINEMATIC VIDEO TRANSITION OVERLAY ═ -->
+  <div class="page-transition-video" id="pageTransitionVideo" aria-hidden="true">
+    <video class="page-transition-video-element" id="pageTransitionVideoElement" playsinline webkit-playsinline muted preload="auto"></video>
+  </div>
 
-      <h1 class="hero-name fade-in" data-delay="100">
-        <span class="hero-name-line" id="heroNameLine1"></span>
-        <span class="hero-name-line" id="heroNameLine2"></span>
-      </h1>
-
-      <div class="hero-divider fade-in" data-delay="200" aria-hidden="true"></div>
-
-      <div class="hero-sub fade-in" data-delay="300">
-        <p class="hero-role"   id="heroRole"></p>
-        <p class="hero-slogan" id="heroSlogan" data-slogan-text=""></p>
-      </div>
-
-      <div class="hero-workplace fade-in" data-delay="400">
-        <span class="workplace-label">Currently at</span>
-        <span class="workplace-name" id="heroWorkplace"></span>
-      </div>
-
-      <!-- Ticker strip — rendered by script.js -->
-      <div class="ticker-strip fade-in" data-delay="450" id="tickerStrip" aria-hidden="true"></div>
-
-      <!-- Showreel -->
-      <div class="showreel-wrapper fade-in" data-delay="500">
-        <div class="showreel-label">
-          <span class="showreel-tag">SHOWREEL</span>
-          <div class="showreel-line" aria-hidden="true"></div>
-        </div>
-        <div class="showreel-frame" id="showreelFrame" role="region" aria-label="Showreel video"></div>
-      </div>
-
-    </div>
-    <div class="hero-vert-text" id="heroVertText" aria-hidden="true"></div>
-  </section>
-
-  <!-- ═══════════════════════════════════════ 02. PROJECTS ═══════════════════════════════════════ -->
-  <section id="projects" class="section projects-section" aria-label="Projects">
-    <div class="section-header fade-in" data-num="02">
-      <span class="section-number">02.</span>
-      <h2 class="section-title">My Projects</h2>
-      <div class="section-header-line" aria-hidden="true"></div>
-    </div>
-
-    <div class="projects-grid" id="projectsGrid" role="list"></div>
-
-    <div class="projects-cta-row fade-in">
-      <a id="ctaBehance"  href="#" target="_blank" rel="noopener noreferrer" class="btn-outline">View Full Portfolio on Behance ↗</a>
-      <a id="ctaLinkedIn" href="#" target="_blank" rel="noopener noreferrer" class="btn-outline">LinkedIn Profile ↗</a>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════ 03. AI GENERATIVE ═══════════════════════════════════════ -->
-  <section id="ai-generative" class="section ai-section" aria-label="AI Generative">
-    <div class="section-header fade-in" data-num="03">
-      <span class="section-number">03.</span>
-      <h2 class="section-title">AI Generative</h2>
-      <div class="section-header-line" aria-hidden="true"></div>
-    </div>
-
-    <div class="ai-layout">
-      <div class="ai-intro fade-in" data-delay="0">
-        <p class="ai-eyebrow">The Next Layer of Production</p>
-        <h3 class="ai-headline">Where Human Craft<br/><em>Meets Machine Intelligence</em></h3>
-        <p class="ai-body">
-          Tôi tích hợp các công cụ <strong>AI Generative</strong> và quy trình <strong>Workflow Automation</strong>
-          trực tiếp vào pipeline hậu kỳ — không phải để thay thế sáng tạo, mà để khuếch đại nó.
-        </p>
-      </div>
-
-      <div class="ai-pillars">
-        <div class="ai-pillar fade-in" data-delay="0">
-          <div class="ai-pillar-number" aria-hidden="true">I</div>
-          <div class="ai-pillar-content">
-            <h4 class="ai-pillar-title">AI Workflow Automation</h4>
-            <p class="ai-pillar-desc">Tự động hóa các tác vụ lặp lại trong post-production: auto-transcription, smart cut, scene detection và batch export — rút ngắn thời gian hậu kỳ đến 60% mà vẫn giữ chất lượng cinematic chuẩn.</p>
-          </div>
-        </div>
-        <div class="ai-pillar fade-in" data-delay="100">
-          <div class="ai-pillar-number" aria-hidden="true">II</div>
-          <div class="ai-pillar-content">
-            <h4 class="ai-pillar-title">Generative AI Tools</h4>
-            <p class="ai-pillar-desc">Ứng dụng các mô hình AI generative (Midjourney, Runway, ElevenLabs) để tạo concept art, generate B-roll, voice synthesis — mở rộng khả năng sản xuất mà không cần tăng ngân sách.</p>
-          </div>
-        </div>
-        <div class="ai-pillar fade-in" data-delay="200">
-          <div class="ai-pillar-number" aria-hidden="true">III</div>
-          <div class="ai-pillar-content">
-            <h4 class="ai-pillar-title">Vibe Coding — Python &amp; Manim</h4>
-            <p class="ai-pillar-desc">Kỹ thuật <em>"Vibe Coding"</em> với thư viện <strong>Python Manim</strong> để lập trình chuyển động toán học chính xác: data visualization, kinetic typography, và motion graphics kỹ thuật số.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="ai-code-block fade-in" data-delay="300" role="img" aria-label="Python Manim code example">
-        <div class="code-header">
-          <span class="code-dot red"    aria-hidden="true"></span>
-          <span class="code-dot yellow" aria-hidden="true"></span>
-          <span class="code-dot green"  aria-hidden="true"></span>
-          <span class="code-filename">enzyme_action.py — Manim Scene</span>
-        </div>
-        <pre class="code-body"><code><span class="code-kw">from</span> manim <span class="code-kw">import</span> *
-
-<span class="code-kw">class</span> <span class="code-fn">CinematicTitle</span>(Scene):
-    <span class="code-kw">def</span> <span class="code-fn">construct</span>(self):
-        title = Text(
-            <span class="code-str">"PHAN DUC PHAT"</span>,
-            font=<span class="code-str">"Playfair Display"</span>,
-            color=<span class="code-str">"#C5A880"</span>
-        )
-        line = Line(LEFT*<span class="code-num">3</span>, RIGHT*<span class="code-num">3</span>)
-        line.set_color(<span class="code-str">"#8E8E93"</span>)
-
-        self.play(Write(title), run_time=<span class="code-num">2</span>)
-        self.play(Create(line))
-        self.wait(<span class="code-num">1</span>)</code></pre>
-      </div>
-
-      <div class="ai-quote fade-in" data-delay="400">
-        <blockquote>
-          <p>"Code is just another brush. Logic is just another lens."</p>
-          <cite>— P.Đ.Phát</cite>
-        </blockquote>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════ 04. ABOUT ═══════════════════════════════════════ -->
-  <section id="about" class="section about-section" aria-label="About and Skills">
-    <div class="section-header fade-in" data-num="04">
-      <span class="section-number">04.</span>
-      <h2 class="section-title">About &amp; Skills</h2>
-      <div class="section-header-line" aria-hidden="true"></div>
-    </div>
-
-    <div class="about-layout">
-      <div class="about-text fade-in" data-delay="0">
-        <p class="about-eyebrow" id="aboutEyebrow"></p>
-        <h3 class="about-headline" id="aboutHeadline"></h3>
-        <div class="about-body" id="aboutBody"></div>
-      </div>
-
-      <div class="about-skills fade-in" data-delay="200">
-        <p class="skills-eyebrow">Core Competencies</p>
-        <div class="skills-text" id="skillsText" role="list"></div>
-        <div class="skills-grid" id="skillsGrid" aria-hidden="true"></div>
-        <div class="education-cards" id="educationCards"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════ 05. CONTACT ═══════════════════════════════════════ -->
-  <section id="contact" class="section contact-section" aria-label="Contact">
-    <div class="section-header fade-in" data-num="05">
-      <span class="section-number">05.</span>
-      <h2 class="section-title">Contact</h2>
-      <div class="section-header-line" aria-hidden="true"></div>
-    </div>
-
-    <div class="contact-layout">
-      <div class="contact-headline fade-in" data-delay="0">
-        <h3 class="contact-big">Let's create<br/><em>something</em><br/>extraordinary.</h3>
-      </div>
-      <div class="contact-info fade-in" data-delay="200" id="contactInfo"></div>
-    </div>
-
-    <footer class="site-footer" role="contentinfo">
-      <div class="footer-inner" id="footerInner"></div>
-    </footer>
-  </section>
+  <!-- ═ CINEMATIC PAGE TRANSITION SHUTTER ═ -->
+  <div class="page-transition-shutter" id="pageTransitionShutter" aria-hidden="true">
+    <div class="shutter-line"></div>
+  </div>
 
   <!-- ═ LIGHTBOX ═ -->
   <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Project detail" aria-hidden="true">
@@ -230,18 +99,58 @@
       <div class="lightbox-content" id="lightboxContent">
         <div class="lightbox-visual" id="lightboxVisual"></div>
         <div class="lightbox-info">
-          <p class="lightbox-category" id="lightboxCategory"></p>
-          <h3 class="lightbox-title"   id="lightboxTitle"></h3>
-          <p class="lightbox-desc"     id="lightboxDesc"></p>
-          <p class="lightbox-tags"     id="lightboxTags"></p>
-          <a href="#" class="btn-accent" id="lightboxLink" target="_blank" rel="noopener noreferrer">View on Behance ↗</a>
+          <!-- Rendered dynamically by lightbox.js -->
         </div>
       </div>
     </div>
   </div>
 
-  <script src="data.js"></script>
-  <script src="effects.js"></script>
-  <script src="script.js"></script>
+  <!-- ═ CINEMA FULLSCREEN SCREENING ROOM OVERLAY ═ -->
+  <div class="cinema-fullscreen-overlay" id="cinemaFullscreenOverlay" role="dialog" aria-modal="true" aria-label="Film Screening Room" aria-hidden="true">
+    <div class="cinema-fullscreen-video-container">
+      <video class="cinema-fullscreen-video" id="cinemaFullscreenVideo" playsinline webkit-playsinline preload="auto"></video>
+      <div class="cinema-fullscreen-grain" aria-hidden="true"></div>
+    </div>
+    <button class="cinema-back-btn" id="cinemaBackBtn" type="button" aria-label="Exit screening and return to cinema room">
+      <span class="cinema-back-text">BACK</span>
+    </button>
+  </div>
+
+  <!-- ═ DATA LAYER ═ -->
+  <script src="data/profile.js"></script>
+  <script src="data/projects.js"></script>
+  <script src="data/work-data.js"></script>
+  <script src="data/work-mock.js"></script>
+  <script src="data/about.js"></script>
+  <script src="data/contact.js"></script>
+
+  <!-- ═ UTILITIES ═ -->
+  <script src="src/utils/dom.js"></script>
+  <script src="src/utils/media.js"></script>
+  <script src="src/utils/accessibility.js"></script>
+
+  <!-- ═ PAGE MODULES ═ -->
+  <script src="src/render/hero.js"></script>
+  <script src="src/render/ai.js"></script>
+  <script src="src/pages/home.js"></script>
+  <script src="src/pages/work.js"></script>
+  <script src="src/pages/profile.js"></script>
+  <script src="src/pages/contact.js"></script>
+
+  <!-- ═ APP ENTRY ═ -->
+  <script src="src/app.js"></script>
+
+  <!-- ═ INTERACTIONS & ROUTING (after DOM is populated) ═ -->
+  <script src="src/interactions/scroll.js"></script>
+  <script src="src/interactions/lightbox.js"></script>
+  <script src="src/interactions/cursor.js"></script>
+  <script src="src/interactions/animations.js"></script>
+  <script src="src/interactions/transitions.js"></script>
+  <script src="src/interactions/videoTransitions.js"></script>
+  <script src="src/interactions/navigation.js"></script>
+
+  <!-- ═ EFFECTS ═ -->
+  <script src="effects/effects.js"></script>
+
 </body>
 </html>
