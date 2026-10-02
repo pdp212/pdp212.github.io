@@ -1,7 +1,7 @@
 /**
  * data/work-data.js — Production Data Layer for WORK Cinema
  *
- * Implements Cloudflare R2 Manifest ingestion with transparent fallback mock:
+ * Implements Cloudflare R2 Manifest ingestion with transparent R2 fallback:
  * - Fetches manifest JSON from public endpoint (Cloudflare R2 or Worker)
  * - Schema conforming to:
  *     {
@@ -14,7 +14,7 @@
  *     TAG  = characters before first underscore
  *     NAME = remainder before file extension
  * - Zero hardcoded credentials (no access key, secret key, or account ID)
- * - Automatic fallback to local mock data on network error, CORS, 404, or invalid JSON
+ * - Automatic R2 fallback on network error, CORS, 404, or invalid JSON
  */
 
 (function () {
@@ -23,8 +23,8 @@
   var DEFAULT_MANIFEST_URL = 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/work-manifest.json';
   var PRODUCTION_R2_STREAM_URL = 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4';
 
-  // Production Fallback Video (Streams verified Cloudflare R2 master video — zero local Git MP4 dependency)
-  var FALLBACK_MOCK_VIDEOS = [
+  // R2 Fallback: streams directly from Cloudflare R2 — zero local Git MP4 dependency
+  var R2_FALLBACK_VIDEOS = [
     {
       key: 'WED_PHUNGTUONG.wed.mp4',
       url: PRODUCTION_R2_STREAM_URL,
@@ -73,7 +73,7 @@
 
   // Active state (null during initial load to prevent premature mock render)
   var currentItems = null;
-  var currentSource = 'loading'; // 'loading' | 'production_manifest' | 'fallback_mock'
+  var currentSource = 'loading'; // 'loading' | 'production_manifest' | 'r2_fallback'
   var currentStatus = 'loading'; // 'loading' | 'loaded' | 'error'
   var listeners = [];
   var initialLoadPromise = null;
@@ -139,13 +139,13 @@
       .catch(function (err) {
         var reason = err.message || String(err);
         console.error('[WORK DATA] FALLBACK ROOT CAUSE: Manifest load failed from ' + targetUrl + '. Reason:', reason);
-        currentItems = FALLBACK_MOCK_VIDEOS.map(normalizeItem);
-        currentSource = 'fallback_mock';
+        currentItems = R2_FALLBACK_VIDEOS.map(normalizeItem);
+        currentSource = 'r2_fallback';
         currentStatus = 'error';
 
-        window.__WORK_DATA_SOURCE = 'fallback_mock';
+        window.__WORK_DATA_SOURCE = 'r2_fallback';
         window.__WORK_DATA_FALLBACK_REASON = reason;
-        console.log('[WORK DATA] source:', 'fallback_mock');
+        console.log('[WORK DATA] source:', 'r2_fallback');
         console.log('[WORK DATA] videos:', currentItems);
         console.log('[WORK DATA] manifest URL:', targetUrl);
         console.log('[WORK DATA] first video URL:', currentItems[0] ? currentItems[0].url : 'none');
@@ -168,7 +168,7 @@
       return currentItems;
     },
     getMockVideos: function () {
-      return FALLBACK_MOCK_VIDEOS.map(normalizeItem);
+      return R2_FALLBACK_VIDEOS.map(normalizeItem);
     },
     getSource: function () {
       return currentSource;

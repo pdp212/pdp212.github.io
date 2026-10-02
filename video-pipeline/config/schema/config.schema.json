@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PipelineConfig",
+  "description": "Configuration schema for the Video Pipeline application (Strictly zero secrets)",
+  "type": "object",
+  "required": [
+    "version",
+    "portfolioPath",
+    "productionUrl",
+    "git",
+    "r2",
+    "manifest",
+    "encoding",
+    "supportedInputFormats",
+    "outputFormat",
+    "directories",
+    "testCommands",
+    "timeout",
+    "retryPolicy"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "portfolioPath": {
+      "type": "string"
+    },
+    "productionUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "git": {
+      "type": "object",
+      "required": ["repository", "branch", "requireCleanWorkingTree", "disallowForcePush"],
+      "properties": {
+        "repository": { "type": "string" },
+        "branch": { "type": "string" },
+        "requireCleanWorkingTree": { "type": "boolean" },
+        "disallowForcePush": { "type": "boolean" }
+      }
+    },
+    "r2": {
+      "type": "object",
+      "required": ["bucket", "publicBaseUrl"],
+      "properties": {
+        "bucket": { "type": "string" },
+        "publicBaseUrl": { "type": "string", "format": "uri" }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "required": ["relativeFilePath", "atomicBackup"],
+      "properties": {
+        "relativeFilePath": { "type": "string" },
+        "atomicBackup": { "type": "boolean" }
+      }
+    },
+    "encoding": {
+      "type": "object",
+      "required": [
+        "videoCodec",
+        "audioCodec",
+        "preset",
+        "crf",
+        "pixelFormat"
+      ],
+      "properties": {
+        "container": { "type": "string" },
+        "videoCodec": { "type": "string" },
+        "audioCodec": { "type": "string" },
+        "preset": { "type": "string" },
+        "crf": { "type": "number" },
+        "profile": { "type": "string" },
+        "level": { "type": "string" },
+        "fastStart": { "type": "boolean" },
+        "faststart": { "type": "boolean" },
+        "pixelFormat": { "type": "string" },
+        "audioBitrate": { "type": "string" },
+        "audioSampleRate": { "type": "number" },
+        "audioChannels": { "type": "number" },
+        "preserveResolution": { "type": "boolean" },
+        "preserveFrameRate": { "type": "boolean" },
+        "maxConcurrency": { "type": "number" },
+        "allowOverwrite": { "type": "boolean" },
+        "maxBitrate": { "type": "string" },
+        "bufferSize": { "type": "string" },
+        "maxResolution": {
+          "type": "object",
+          "properties": {
+            "width": { "type": "number" },
+            "height": { "type": "number" }
+          }
+        },
+        "keepAudio": { "type": "boolean" }
+      }
+    },
+    "supportedInputFormats": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "outputFormat": {
+      "type": "string"
+    },
+    "directories": {
+      "type": "object",
+      "required": ["temp", "encoded", "completed", "failed"],
+      "properties": {
+        "temp": { "type": "string" },
+        "encoded": { "type": "string" },
+        "completed": { "type": "string" },
+        "failed": { "type": "string" }
+      }
+    },
+    "testCommands": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "timeout": {
+      "type": "object",
+      "required": [
+        "validationMs",
+        "encodingMs",
+        "uploadMs",
+        "verificationMs",
+        "githubActionsMs",
+        "smokeTestMs"
+      ],
+      "properties": {
+        "validationMs": { "type": "number" },
+        "encodingMs": { "type": "number" },
+        "uploadMs": { "type": "number" },
+        "verificationMs": { "type": "number" },
+        "githubActionsMs": { "type": "number" },
+        "smokeTestMs": { "type": "number" }
+      }
+    },
+    "retryPolicy": {
+      "type": "object",
+      "required": ["maxRetries", "initialDelayMs", "backoffFactor"],
+      "properties": {
+        "maxRetries": { "type": "number" },
+        "initialDelayMs": { "type": "number" },
+        "backoffFactor": { "type": "number" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

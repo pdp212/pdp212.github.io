@@ -1,0 +1,28 @@
+{
+  "name": "video-pipeline",
+  "version": "1.0.0",
+  "description": "Automated video ingestion, validation, encoding, R2 deployment, manifest updating, and production verification pipeline for portfolio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test dist/tests/unit/*.test.js dist/tests/security/*.test.js dist/tests/integration/*.test.js",
+    "ui": "npm run build && node dist/app/main/index.js --ui",
+    "input:test": "npm run test",
+    "validate": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.8.0"
+  },
+  "keywords": [
+    "video-pipeline",
+    "r2",
+    "ffmpeg",
+    "portfolio",
+    "automation"
+  ],
+  "author": "Phan Duc Phat <phanducphat2310@gmail.com>",
+  "license": "UNLICENSED"
+}

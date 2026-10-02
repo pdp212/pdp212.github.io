@@ -1,0 +1,69 @@
+{
+  "$schema": "./schema/config.schema.json",
+  "version": "1.0.0",
+  "portfolioPath": "../",
+  "productionUrl": "https://pdp212.github.io/",
+  "git": {
+    "repository": "pdp212/pdp212.github.io",
+    "branch": "main",
+    "requireCleanWorkingTree": true,
+    "disallowForcePush": true
+  },
+  "r2": {
+    "bucket": "pdp212-profile",
+    "publicBaseUrl": "https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev"
+  },
+  "manifest": {
+    "relativeFilePath": "data/work-manifest.json",
+    "atomicBackup": true
+  },
+  "encoding": {
+    "container": "mp4",
+    "videoCodec": "libx264",
+    "audioCodec": "aac",
+    "pixelFormat": "yuv420p",
+    "crf": 18,
+    "preset": "medium",
+    "profile": "high",
+    "level": "4.2",
+    "audioBitrate": "192k",
+    "audioSampleRate": 48000,
+    "audioChannels": 2,
+    "fastStart": true,
+    "preserveResolution": true,
+    "preserveFrameRate": true,
+    "maxConcurrency": 1,
+    "allowOverwrite": false
+  },
+  "supportedInputFormats": [
+    ".mp4",
+    ".mov",
+    ".mkv",
+    ".avi",
+    ".mxf",
+    ".webm"
+  ],
+  "outputFormat": ".mp4",
+  "directories": {
+    "temp": "./temp",
+    "encoded": "./encoded",
+    "completed": "./completed",
+    "failed": "./failed"
+  },
+  "testCommands": [
+    "node scripts/validate.js"
+  ],
+  "timeout": {
+    "validationMs": 30000,
+    "encodingMs": 600000,
+    "uploadMs": 300000,
+    "verificationMs": 60000,
+    "githubActionsMs": 900000,
+    "smokeTestMs": 60000
+  },
+  "retryPolicy": {
+    "maxRetries": 3,
+    "initialDelayMs": 2000,
+    "backoffFactor": 2
+  }
+}
