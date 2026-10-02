@@ -32,7 +32,7 @@
       key: filename,
       tag: parsed.tag,
       name: parsed.name,
-      url: 'assets/videos/projects/' + filename
+      url: 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4'
     };
   });
 

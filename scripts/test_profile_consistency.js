@@ -75,8 +75,6 @@ async function run() {
       }
     });
 
-    await sleep(1000);
-
     async function evaluate(expression) {
       const res = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
       if (res.result && res.result.exceptionDetails) {
@@ -84,6 +82,20 @@ async function run() {
       }
       return res.result && res.result.result ? res.result.result.value : undefined;
     }
+
+    async function waitForData(maxMs = 8000) {
+      const start = Date.now();
+      while (Date.now() - start < maxMs) {
+        try {
+          const ready = await evaluate("typeof PORTFOLIO_DATA !== 'undefined' && !!PORTFOLIO_DATA.profile && !!PORTFOLIO_DATA.about && !!PORTFOLIO_DATA.contact");
+          if (ready) return true;
+        } catch (e) {}
+        await sleep(150);
+      }
+      return false;
+    }
+
+    await waitForData();
 
     // ── 1. AUDIT DATA LAYER VALUES ──
     console.log('--- 1. AUDITING DATA LAYER VALUES (Single Source of Truth) ---');

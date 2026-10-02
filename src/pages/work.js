@@ -59,10 +59,10 @@
       return window.WORK_MOCK_VIDEOS;
     }
     return [
-      { id: 'mock-1', key: 'WED_PHUNGTUONG.mp4', tag: 'WED', name: 'PHUNGTUONG', url: 'assets/videos/projects/WED_PHUNGTUONG.mp4' },
-      { id: 'mock-2', key: 'MOTION_BRAND_FILM.mp4', tag: 'MOTION', name: 'BRAND_FILM', url: 'assets/videos/projects/MOTION_BRAND_FILM.mp4' },
-      { id: 'mock-3', key: 'MV_SUMMER_NIGHT.mp4', tag: 'MV', name: 'SUMMER_NIGHT', url: 'assets/videos/projects/MV_SUMMER_NIGHT.mp4' },
-      { id: 'mock-4', key: 'DOC_STREET_DN.mp4', tag: 'DOC', name: 'STREET_DN', url: 'assets/videos/projects/DOC_STREET_DN.mp4' }
+      { id: 'mock-1', key: 'WED_PHUNGTUONG.mp4', tag: 'WED', name: 'PHUNGTUONG', url: 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4' },
+      { id: 'mock-2', key: 'MOTION_BRAND_FILM.mp4', tag: 'MOTION', name: 'BRAND_FILM', url: 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4' },
+      { id: 'mock-3', key: 'MV_SUMMER_NIGHT.mp4', tag: 'MV', name: 'SUMMER_NIGHT', url: 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4' },
+      { id: 'mock-4', key: 'DOC_STREET_DN.mp4', tag: 'DOC', name: 'STREET_DN', url: 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4' }
     ];
   }
 
