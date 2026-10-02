@@ -21,34 +21,15 @@
   'use strict';
 
   var DEFAULT_MANIFEST_URL = 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/work-manifest.json';
+  var PRODUCTION_R2_STREAM_URL = 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4';
 
-  var R2_PUBLIC_BASE_URL = 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev';
-
-  // Fallback Mock Videos (Cloudflare R2 Streams)
+  // Production Fallback Video (Streams verified Cloudflare R2 master video — zero local Git MP4 dependency)
   var FALLBACK_MOCK_VIDEOS = [
     {
-      key: 'WED_PHUNGTUONG.mp4',
-      url: 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4',
+      key: 'WED_PHUNGTUONG.wed.mp4',
+      url: PRODUCTION_R2_STREAM_URL,
       tag: 'WED',
       name: 'PHUNGTUONG'
-    },
-    {
-      key: 'MOTION_BRAND_FILM.mp4',
-      url: 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4',
-      tag: 'MOTION',
-      name: 'BRAND_FILM'
-    },
-    {
-      key: 'MV_SUMMER_NIGHT.mp4',
-      url: 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4',
-      tag: 'MV',
-      name: 'SUMMER_NIGHT'
-    },
-    {
-      key: 'DOC_STREET_DN.mp4',
-      url: 'https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4',
-      tag: 'DOC',
-      name: 'STREET_DN'
     }
   ];
 
@@ -79,7 +60,7 @@
     var parsed = parseKey(key);
     var tag = raw.tag || parsed.tag || 'FILM';
     var name = raw.name || parsed.name || 'UNTITLED';
-    var url = raw.url || (R2_PUBLIC_BASE_URL + '/' + key);
+    var url = raw.url || ('https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/' + key);
 
     return {
       id: 'work-' + (index + 1),

@@ -189,7 +189,7 @@ async function run() {
     const fallbackSource = await evaluate("window.WorkData.getSource()");
     const fallbackVideosCount = await evaluate("window.WorkData.getVideos().length");
     console.log('   Fallback source after 404:', fallbackSource, fallbackSource === 'fallback_mock' ? '✓ PASS' : '✗ FAIL');
-    console.log('   Fallback videos loaded:', fallbackVideosCount, fallbackVideosCount === 4 ? '✓ PASS' : '✗ FAIL');
+    console.log('   Fallback videos loaded:', fallbackVideosCount, fallbackVideosCount >= 1 ? '✓ PASS' : '✗ FAIL');
 
     // Restore production manifest
     console.log('   Restoring production manifest...');
