@@ -1,7 +1,8 @@
 /**
- * Step 3: Cloudflare R2 Direct Upload
- * Uploads validated production-encoded MP4 files to Cloudflare R2 using S3-compatible API.
+ * Step 2: Cloudflare R2 Direct Upload
+ * Uploads validated project-prepared video files directly to Cloudflare R2 using S3-compatible API.
  * Supports idempotency, transient error retry, serialized execution, and dry-run simulation.
+ * Preserves original master video bytes, container format, and codec without transcoding.
  */
 
 import fs from 'node:fs';
@@ -12,6 +13,7 @@ import {
   R2ClientFactory,
   R2Client,
   CloudflareR2Uploader,
+  getVideoContentType,
   type R2Uploader,
 } from '../../engines/r2/index.js';
 import { SecretSanitizer } from '../../core/security/secret-sanitizer.js';
@@ -31,7 +33,7 @@ export class UploadR2Step implements PipelineStep {
 
   public async execute(context: PipelineContext): Promise<StepResult> {
     const itemsToUpload = context.items.filter(
-      (item) => item.status === 'ENCODED' || item.status === 'VALIDATED'
+      (item) => item.status === 'VALIDATED' || item.status === 'PENDING' || (item.status as string) === 'ENCODED'
     );
 
     context.logger.info(
@@ -58,14 +60,14 @@ export class UploadR2Step implements PipelineStep {
       );
 
       for (const item of itemsToUpload) {
-        const localPath = item.encodedLocalPath || item.localEncodedPath || item.sourcePath;
+        const localPath = item.sourcePath || item.encodedLocalPath || item.localEncodedPath || item.filename || 'video.mp4';
         const fileName = path.basename(localPath);
         const objectKey = item.objectKey || item.targetKey || fileName;
         const publicUrl = `${publicBaseUrl.replace(/\/+$/, '')}/${objectKey.replace(/^\/+/, '')}`;
 
-        item.localEncodedPath = localPath;
         item.fileName = fileName;
         item.objectKey = objectKey;
+        item.targetKey = objectKey;
         item.r2PublicUrl = publicUrl;
         item.r2UploadStatus = 'UPLOADED';
         item.status = 'UPLOADED';
@@ -117,10 +119,10 @@ export class UploadR2Step implements PipelineStep {
 
     for (let i = 0; i < itemsToUpload.length; i++) {
       const item = itemsToUpload[i];
-      const localPath = item.encodedLocalPath || item.localEncodedPath;
+      const localPath = item.sourcePath || item.encodedLocalPath || item.localEncodedPath;
 
       if (!localPath) {
-        const err = new R2UploadError(`Item '${item.filename}' has no encodedLocalPath.`);
+        const err = new R2UploadError(`Item '${item.filename}' has no sourcePath.`);
         item.status = 'FAILED';
         item.r2UploadStatus = 'FAILED';
         item.error = err.message;
@@ -129,7 +131,7 @@ export class UploadR2Step implements PipelineStep {
       }
 
       if (!fs.existsSync(localPath)) {
-        const err = new R2UploadError(`Encoded file not found on disk: ${localPath}`);
+        const err = new R2UploadError(`Source video file not found on disk: ${localPath}`);
         item.status = 'FAILED';
         item.r2UploadStatus = 'FAILED';
         item.error = err.message;
@@ -139,7 +141,7 @@ export class UploadR2Step implements PipelineStep {
 
       const stat = fs.statSync(localPath);
       if (stat.size === 0) {
-        const err = new R2UploadError(`Encoded file is empty (0 bytes): ${localPath}`);
+        const err = new R2UploadError(`Source video file is empty (0 bytes): ${localPath}`);
         item.status = 'FAILED';
         item.r2UploadStatus = 'FAILED';
         item.error = err.message;
@@ -148,8 +150,10 @@ export class UploadR2Step implements PipelineStep {
       }
 
       const fileName = path.basename(localPath);
-      if (!fileName.toLowerCase().endsWith('.mp4')) {
-        const err = new R2UploadError(`Encoded file must be .mp4, got: ${fileName}`);
+      const ext = path.extname(fileName).toLowerCase();
+      const supportedFormats = context.config.supportedInputFormats.map((f) => f.toLowerCase());
+      if (!supportedFormats.includes(ext)) {
+        const err = new R2UploadError(`Unsupported video format '${ext}' for upload: ${fileName}`);
         item.status = 'FAILED';
         item.r2UploadStatus = 'FAILED';
         item.error = err.message;
@@ -158,6 +162,7 @@ export class UploadR2Step implements PipelineStep {
       }
 
       const objectKey = item.objectKey || item.targetKey || fileName;
+      const contentType = getVideoContentType(objectKey);
 
       context.logger.info(
         this.stage,
@@ -169,7 +174,7 @@ export class UploadR2Step implements PipelineStep {
         const result = await uploader.upload(
           localPath,
           objectKey,
-          'video/mp4',
+          contentType,
           (progress) => {
             if (progress.percent % 25 === 0) {
               context.logger.debug(
@@ -182,8 +187,10 @@ export class UploadR2Step implements PipelineStep {
         );
 
         item.localEncodedPath = localPath;
+        item.encodedLocalPath = localPath;
         item.fileName = fileName;
         item.objectKey = objectKey;
+        item.targetKey = objectKey;
         item.r2PublicUrl = result.publicUrl;
         item.r2UploadStatus = result.status;
         item.status = 'UPLOADED';

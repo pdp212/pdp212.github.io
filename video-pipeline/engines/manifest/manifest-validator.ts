@@ -3,11 +3,13 @@
  * Ensures each manifest entry conforms to portfolio schema, HTTPS URLs, security rules, and uniqueness.
  */
 
+import path from 'node:path';
 import type { ManifestEntry } from '../../pipeline/context.js';
 import { ManifestError } from '../../core/errors/pipeline-errors.js';
 
 export interface ManifestValidatorOptions {
   publicBaseUrl?: string;
+  supportedExtensions?: string[];
 }
 
 export interface ManifestValidationResult {
@@ -22,18 +24,19 @@ export interface ExtractedMetadata {
 
 /**
  * Parses TAG and NAME deterministically from filename or key.
- * Supports: TAG_NAME.mp4, TAG_NAME.type.mp4, etc.
+ * Supports: TAG_NAME.mp4, TAG_NAME.type.mp4, TAG_NAME.mov, etc.
  * Example: WED_PHUNGTUONG.wed.mp4 -> tag: WED, name: PHUNGTUONG
- * Example: MOTION_BRAND_FILM.mp4 -> tag: MOTION, name: BRAND_FILM
+ * Example: MOTION_BRAND_FILM.mov -> tag: MOTION, name: BRAND_FILM
  */
 export function extractTagAndName(filenameOrKey: string): ExtractedMetadata {
   const clean = filenameOrKey.trim();
-  if (!clean.toLowerCase().endsWith('.mp4')) {
-    throw new ManifestError(`Cannot extract tag and name: filename '${filenameOrKey}' does not end with .mp4`);
+  const ext = path.extname(clean);
+  if (!ext) {
+    throw new ManifestError(`Cannot extract tag and name: filename '${filenameOrKey}' has no extension`);
   }
-  const withoutMp4 = clean.replace(/\.mp4$/i, '');
-  const dotIndex = withoutMp4.lastIndexOf('.');
-  const base = dotIndex !== -1 ? withoutMp4.slice(0, dotIndex) : withoutMp4;
+  const withoutExt = clean.slice(0, -ext.length);
+  const dotIndex = withoutExt.lastIndexOf('.');
+  const base = dotIndex !== -1 ? withoutExt.slice(0, dotIndex) : withoutExt;
 
   const firstUnderscore = base.indexOf('_');
   if (firstUnderscore <= 0) {
@@ -83,6 +86,8 @@ const SECRET_PATTERNS = [
   /secret=[a-zA-Z0-9_\-\.]+/i,
 ];
 
+const DEFAULT_SUPPORTED_EXTENSIONS = ['.mp4', '.mov', '.mkv', '.avi', '.mxf', '.webm'];
+
 export class ManifestValidator {
   /**
    * Validates an entire manifest array.
@@ -102,6 +107,9 @@ export class ManifestValidator {
 
     const keysSeen = new Set<string>();
     const urlsSeen = new Set<string>();
+    const allowedExts = (options.supportedExtensions || DEFAULT_SUPPORTED_EXTENSIONS).map((e) =>
+      e.toLowerCase()
+    );
 
     for (let i = 0; i < entries.length; i++) {
       const item = entries[i];
@@ -118,8 +126,9 @@ export class ManifestValidator {
         errors.push(`Entry #${i} missing valid 'key'.`);
       } else {
         const trimmedKey = key.trim();
-        if (!trimmedKey.toLowerCase().endsWith('.mp4')) {
-          errors.push(`Entry '${trimmedKey}' key must end with .mp4 extension.`);
+        const ext = path.extname(trimmedKey).toLowerCase();
+        if (!ext || !allowedExts.includes(ext)) {
+          errors.push(`Entry '${trimmedKey}' key must have a valid video extension (${allowedExts.join(', ')}).`);
         }
         if (trimmedKey.includes('/') || trimmedKey.includes('\\') || trimmedKey.includes('..')) {
           errors.push(`Entry '${trimmedKey}' key contains illegal path characters.`);

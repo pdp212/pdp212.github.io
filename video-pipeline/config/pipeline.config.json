@@ -17,24 +17,6 @@
     "relativeFilePath": "data/work-manifest.json",
     "atomicBackup": true
   },
-  "encoding": {
-    "container": "mp4",
-    "videoCodec": "libx264",
-    "audioCodec": "aac",
-    "pixelFormat": "yuv420p",
-    "crf": 18,
-    "preset": "medium",
-    "profile": "high",
-    "level": "4.2",
-    "audioBitrate": "192k",
-    "audioSampleRate": 48000,
-    "audioChannels": 2,
-    "fastStart": true,
-    "preserveResolution": true,
-    "preserveFrameRate": true,
-    "maxConcurrency": 1,
-    "allowOverwrite": false
-  },
   "supportedInputFormats": [
     ".mp4",
     ".mov",
@@ -43,10 +25,8 @@
     ".mxf",
     ".webm"
   ],
-  "outputFormat": ".mp4",
   "directories": {
     "temp": "./temp",
-    "encoded": "./encoded",
     "completed": "./completed",
     "failed": "./failed"
   },
@@ -55,7 +35,6 @@
   ],
   "timeout": {
     "validationMs": 30000,
-    "encodingMs": 600000,
     "uploadMs": 300000,
     "verificationMs": 60000,
     "githubActionsMs": 900000,

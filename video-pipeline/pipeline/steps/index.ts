@@ -1,7 +1,6 @@
 export * from './_utils.js';
 export * from './step-interface.js';
 export * from './validate.js';
-export * from './encode.js';
 export * from './upload-r2.js';
 export * from './verify-r2.js';
 export * from './verify-stream.js';

@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790989689657_cel2q",
+  "pipelineId": "pipe_1790989689672",
+  "createdAt": "2026-10-03T01:08:09.657Z",
+  "startedAt": "2026-10-03T01:08:09.657Z",
+  "completedAt": "2026-10-03T01:08:09.740Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790989689645_nscxk",
+      "filename": "vid_1790989689645_nscxk",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 67
+}

@@ -1,8 +1,20 @@
 [
   {
+    "key": "RECAP_EDVN2026_wedr2.002.mp4",
+    "url": "https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/RECAP_EDVN2026_wedr2.002.mp4",
+    "tag": "RECAP",
+    "name": "EDVN2026_wedr2.002"
+  },
+  {
     "key": "WED_PHUNGTUONG.wed.mp4",
     "url": "https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4",
     "tag": "WED",
     "name": "PHUNGTUONG"
+  },
+  {
+    "key": "WED_TUTRA.001.mp4",
+    "url": "https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_TUTRA.001.mp4",
+    "tag": "WED",
+    "name": "TUTRA.001"
   }
 ]

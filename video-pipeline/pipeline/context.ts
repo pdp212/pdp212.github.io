@@ -3,6 +3,7 @@
  * Carries all execution context, batch item descriptors, configuration, and runtime state.
  */
 
+import path from 'node:path';
 import type { PipelineConfig } from '../config/schema/index.js';
 import type { PipelineCredentials } from '../core/security/secret-sanitizer.js';
 import type { PipelineLogger } from '../core/logger/logger.js';
@@ -13,6 +14,7 @@ import type { VideoInput } from '../app/application/video-input.js';
 export interface VideoMetadata {
   width: number;
   height: number;
+  fps?: number;
   durationSeconds: number;
   bitrateKbps: number;
   codec: string;
@@ -81,6 +83,8 @@ export interface PipelineContext {
   gitBranchOriginal?: string;
   gitCommitSha?: string;
   currentStage: PipelineStage;
+  abortController?: AbortController;
+  isCancelled?: boolean;
 }
 
 export interface CreateContextOptions {
@@ -92,16 +96,18 @@ export interface CreateContextOptions {
 
 /**
  * Converts validated VideoInput models into PipelineItem descriptors for execution.
+ * Preserves the original file container extension and raw media bytes.
  */
 export function convertVideoInputsToPipelineItems(inputs: VideoInput[]): PipelineItem[] {
   return inputs
     .filter((input) => input.status === 'READY')
     .map((input) => {
-      const ext = input.extension;
+      const ext = input.extension || (input.fileName ? path.extname(input.fileName) : '.mp4');
       const baseName = input.fileName.replace(new RegExp(`\\${ext}$`, 'i'), '');
       const parts = baseName.split('_');
       const tag = parts.length > 1 ? parts[0].toUpperCase() : 'WORK';
       const name = parts.length > 1 ? parts.slice(1).join('_') : baseName;
+      const targetKey = `${baseName}${ext.toLowerCase() || '.mp4'}`;
 
       return {
         id: input.id,
@@ -109,11 +115,12 @@ export function convertVideoInputsToPipelineItems(inputs: VideoInput[]): Pipelin
         filename: input.fileName,
         tag,
         name,
-        targetKey: `${baseName}.mp4`,
+        targetKey,
         sourceMetadata: input.metadata
           ? {
               width: input.metadata.width,
               height: input.metadata.height,
+              fps: input.metadata.fps,
               durationSeconds: input.metadata.duration,
               bitrateKbps: input.metadata.bitrateKbps,
               codec: input.metadata.videoCodec,

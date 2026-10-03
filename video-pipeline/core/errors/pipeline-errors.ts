@@ -6,7 +6,6 @@
 export type PipelineStage =
   | 'IDLE'
   | 'VALIDATING'
-  | 'ENCODING'
   | 'UPLOADING_R2'
   | 'VERIFYING_R2'
   | 'VERIFYING_STREAM'
@@ -45,10 +44,10 @@ export class VideoValidationError extends PipelineError {
   }
 }
 
-export class EncodingError extends PipelineError {
+export class PipelineCancelledError extends PipelineError {
   constructor(message: string, context?: Record<string, unknown>) {
-    super('ENCODING', message, context);
-    this.name = 'EncodingError';
+    super('CANCELLED', message, context, false);
+    this.name = 'PipelineCancelledError';
   }
 }
 
@@ -147,41 +146,6 @@ export class VideoQueueError extends PipelineError {
   constructor(message: string, context?: Record<string, unknown>) {
     super('IDLE', message, context);
     this.name = 'VideoQueueError';
-  }
-}
-
-export class FFmpegNotFoundError extends PipelineError {
-  constructor(message: string, context?: Record<string, unknown>) {
-    super('ENCODING', message, context);
-    this.name = 'FFmpegNotFoundError';
-  }
-}
-
-export class EncodingProcessError extends PipelineError {
-  constructor(message: string, context?: Record<string, unknown>) {
-    super('ENCODING', message, context);
-    this.name = 'EncodingProcessError';
-  }
-}
-
-export class EncodingValidationError extends PipelineError {
-  constructor(message: string, context?: Record<string, unknown>) {
-    super('ENCODING', message, context);
-    this.name = 'EncodingValidationError';
-  }
-}
-
-export class OutputExistsError extends PipelineError {
-  constructor(message: string, context?: Record<string, unknown>) {
-    super('ENCODING', message, context);
-    this.name = 'OutputExistsError';
-  }
-}
-
-export class EncodingCancelledError extends PipelineError {
-  constructor(message: string, context?: Record<string, unknown>) {
-    super('CANCELLED', message, context, false);
-    this.name = 'EncodingCancelledError';
   }
 }
 

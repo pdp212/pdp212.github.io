@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790935375125_t2j0i",
+  "pipelineId": "pipe_1790935375138",
+  "createdAt": "2026-10-02T10:02:55.125Z",
+  "startedAt": "2026-10-02T10:02:55.125Z",
+  "completedAt": "2026-10-02T10:02:55.169Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790935375124_fvdtx",
+      "filename": "vid_1790935375124_fvdtx",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 30
+}

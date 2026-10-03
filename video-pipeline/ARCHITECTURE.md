@@ -1,165 +1,132 @@
 # System Architecture Specification
 
 **Project:** `github-portfolio/video-pipeline`  
-**Phase:** 05 — Manifest Management & Production Registry  
-**Language & Runtime:** TypeScript 5.9 / Node.js 24 ESM (`NodeNext`)
+**Phase:** 10 — Production Ready Desktop & CLI Tool  
+**Runtime:** Node.js 20+ / 22+ (ESM `NodeNext`), Electron, TypeScript 5.8+
 
 ---
 
 ## 1. Architectural Layers & Separation of Concerns
 
-The pipeline architecture enforces strict separation across 7 dedicated layers. No monolithic or circular dependencies are permitted.
+The Video Pipeline architecture is organized into 7 decoupled layers. Dependency flows downward; high-level orchestration delegates to low-level engines without cyclic dependencies.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                          APP LAYER                          │
-│     (CLI bootstrap, UI server, queue coordinator)           │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                       PIPELINE LAYER                        │
-│   (Orchestrator, State Machine, Context, 13 Linear Steps)   │
-└──────────────┬───────────────────────────────┬──────────────┘
-               │                               │
-               ▼                               ▼
-┌──────────────────────────────┐ ┌─────────────────────────────┐
-│        ENGINES LAYER         │ │         CORE LAYER          │
-│  - Video (FFmpeg/FFprobe/Val)│ │  - Structured Logger        │
-│  - R2 (S3 SigV4, Up & Verif) │ │  - State Store & Audit Trail│
-│  - Stream (HTTP 206 Verifier)│ │  - Error Hierarchy (21 cls) │
-│  - Manifest (Atomic Sync)    │ │  - Filesystem Manager       │
-│  - Git (Safety & Cleanup)    │ │  - Secret Sanitizer         │
-│  - GitHub (Workflow Monitor) │ │                             │
-│  - Production (Smoke Tester) │ │                             │
-└──────────────┬───────────────┘ └─────────────┬───────────────┘
-               │                               │
-               ▼                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    CONFIG & TESTS LAYERS                    │
-│   (pipeline.config.json, JSON Schema, Test Suites, Fixtures) │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Layer Responsibilities
-
-1. **`app/`**:
-   - Manages application startup, argument parsing (`--dry-run`, `--ui`), local web tool server, and UI event dispatching.
-   - Houses `VideoInput` model, `VideoQueue` service, and `InputController` for managing user drag-and-drop inputs.
-2. **`pipeline/`**:
-   - The central orchestrator (`VideoPipelineOrchestrator`). Enforces step order and strict stop-on-failure policy.
-   - Supports phased halting via `stopAfterStage` (stopping after `UPDATING_MANIFEST` in Phase 05).
-   - Houses the formal state machine (`PipelineStateMachine`) and execution context (`PipelineContext`).
-3. **`engines/manifest/` [Phase 05 Implemented]**:
-   - `manifest-reader.ts`: Safe JSON parser with array verification and empty/corrupt detection.
-   - `manifest-validator.ts`: Comprehensive schema validation, R2 HTTPS URL matching, illegal path checks, and credential leak audit.
-   - `manifest-diff.ts`: Granular before/after comparison tracking `added`, `updated`, `unchanged`, and `removed` with ASCII reporting box.
-   - `manifest-writer.ts`: Atomic transactional writer with transactional backup to `temp/work-manifest.json.bak`, temp file writes, atomic rename, and rollback recovery.
-4. **`engines/r2/` [Phase 04 Implemented]**:
-   - `r2-client.ts`: Zero-dependency Cloudflare R2 S3-compatible client with native AWS SigV4 signer (`PUT`, `HEAD`).
-   - `uploader.ts`: `CloudflareR2Uploader` with idempotency (pre-flight HEAD), controlled transient retry (up to 3x with exponential backoff), and serialized concurrency (1).
-   - `verifier.ts`: `CloudflareR2Verifier` performing direct HEAD queries to confirm object existence, Content-Type `video/mp4`, and exact byte match with local encoded file.
-   - `stream-verifier.ts`: `Http206StreamVerifier` issuing `Range: bytes=0-1048575` requests to assert HTTP 206 Partial Content, Content-Range headers, and non-empty streaming payloads.
-5. **`engines/video/` [Phase 03 Implemented]**:
-   - `ffmpeg.ts`: Asynchronously spawns external FFmpeg process with stderr progress streaming and cancellation support.
-   - `ffprobe.ts`: Discovers binary and extracts duration, FPS, codecs, dimensions, and audio channels.
-   - `output-validator.ts`: Asserts that encoded MP4 complies with production specs (H.264 high 4.2, yuv420p, AAC 48kHz, resolution/aspect ratio match).
-   - `video-engine.ts`: High-level facade providing deterministic filename formatting and clean transcode APIs.
-6. **`core/`**:
-   - Cross-cutting concerns: logging with automated secret redaction, custom error hierarchy, filesystem path managers, state stores, and credential safety validators.
-7. **`config/`**:
-   - Declarative configuration (`pipeline.config.json`). Contains canonical encoding parameters, R2 bucket & public delivery URLs, path mappings, retry policies, and timeouts. **Strictly zero secrets**.
-8. **`tests/`**:
-   - Unit tests, security boundary tests, integration dry-run, R2, streaming, and manifest tests (106 tests, 28 suites, 100% pass).
-
----
-
-## 2. Pipeline State Machine & Transitions
-
-The state machine strictly prevents bypassing intermediate stages. In Phase 05, the pipeline executes:
-`VALIDATING -> ENCODING -> UPLOADING_R2 -> VERIFYING_R2 -> VERIFYING_STREAM -> UPDATING_MANIFEST` (halts cleanly before Git cleanup).
-
-```
-       [IDLE]
-         │
-         ▼
-    [VALIDATING] ───────────────► [FAILED]
-         │
-         ▼
-     [ENCODING] ────────────────► [FAILED]
-         │
-         ▼
-   [UPLOADING_R2] ──────────────► [FAILED]
-         │
-         ▼
-    [VERIFYING_R2] ─────────────► [FAILED]
-         │
-         ▼
-  [VERIFYING_STREAM] ───────────► [FAILED]
-         │
-         ▼
- [UPDATING_MANIFEST] ───────────► [FAILED]
-         │
-         └───► [STOP: READY FOR GIT CLEANUP (Phase 05 Boundary)]
-   [CLEANING_GIT] ──────────────► [FAILED] (Deferred to Phase 06)
-         │
-         ▼
-  [VERIFYING_GIT] ──────────────► [FAILED]
-         │
-         ▼
-  [RUNNING_TESTS] ──────────────► [FAILED]
-         │
-         ▼
- [READY_TO_COMMIT] ─────────────► [FAILED]
-         │
-         ▼
-   [COMMITTING] ────────────────► [FAILED]
-         │
-         ▼
-     [PUSHING] ─────────────────► [FAILED]
-         │
-         ▼
-[WAITING_FOR_GITHUB_ACTIONS] ───► [FAILED]
-         │
-         ▼
-[PRODUCTION_SMOKE_TEST] ────────► [FAILED]
-         │
-         ▼
-    [COMPLETED]
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              DESKTOP LAYER                              │
+│              (Electron Main Process, Window Lifecycle, Native)          │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                APP LAYER                                │
+│       (Fastify/HTTP Server, SSE Broadcaster, UI, Ingest Controller)     │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                             PIPELINE LAYER                              │
+│  (Orchestrator, State Machine, PipelineContext, 13 Linear Step Modules) │
+└──────────────────┬──────────────────────────────────┬───────────────────┘
+                   │                                  │
+                   ▼                                  ▼
+┌──────────────────────────────────────┐ ┌────────────────────────────────┐
+│            ENGINES LAYER             │ │           CORE LAYER           │
+│  - Video (FFmpeg/FFprobe/Validator)  │ │  - Structured Logger & SSE Sink│
+│  - R2 (S3 SigV4 Signer & Uploader)   │ │  - JobStore & QueueStore       │
+│  - Stream (HTTP 206 Range Verifier)  │ │  - Error Hierarchy (21 Classes)│
+│  - Manifest (Atomic Transaction Sync)│ │  - Filesystem Path Manager     │
+│  - Git (Safety, Branch, Clean Tree)  │ │  - Secret Sanitizer (Redaction)│
+│  - GitHub (Workflow Run Poller)      │ │                                │
+│  - Production (Live Smoke Tester)    │ │                                │
+└──────────────────┬───────────────────┘ └────────────────┬───────────────┘
+                   │                                      │
+                   ▼                                      ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         CONFIG & TESTS LAYERS                           │
+│   (pipeline.config.json, JSON Schema, 66 Test Suites, 185 Unit Tests)    │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Atomic Encoding Lifecycle & Temp File Safety
+## 2. Layer Responsibilities
 
-To ensure that corrupted or partially written videos never enter production:
-1. Videos are encoded into temporary staging: `encoded/.tmp/tmp_<id>_<timestamp>.mp4`.
-2. FFmpeg exit code is validated (`=== 0`).
-3. Output file presence and size (`size > 0`) are verified.
-4. Deep verification is performed by `OutputValidator`.
-5. Upon 100% validation success, file is atomically renamed to: `encoded/<DETERMINISTIC_NAME>.mp4`.
-6. If cancelled or error occurs, the temporary incomplete file is immediately unlinked.
-7. Original master source files remain strictly READ-ONLY.
+### 1. Desktop Layer (`app/desktop/`)
+* **`main.ts`**: Electron entrypoint. Manages application initialization, dynamic port allocation, spawning the internal UI server, creating the `BrowserWindow` with native titlebars and dark `#050505` background, and terminating background processes on app exit.
+* **`index.ts`**: Module exports for desktop runtime functions (`startDesktopApp`, `createWindow`).
+
+### 2. Application Layer (`app/`)
+* **`ui/server.ts`**: Native HTTP server with Zero-dependency REST API and Server-Sent Events (SSE) broadcaster for streaming live logs, state transitions, queue summaries, and job records.
+* **`application/upload-service.ts`**: Handles browser-native multipart file streaming directly into a secure staging directory (`temp/uploads/`) with immediate FFprobe validation.
+* **`application/input-controller.ts`**: Coordinates the active `VideoQueue`, orchestrates file staging, manages queue synchronization, and interfaces with `QueueStore`.
+* **`application/queue-store.ts`**: Persists queue state to `data/queue.json` and auto-restores valid items upon server startup.
+* **`main/index.ts`**: Unified CLI and Web launcher (`--ui`, `--dry-run`, `--input`).
+
+### 3. Pipeline Layer (`pipeline/`)
+* **`pipeline.ts` (`VideoPipelineOrchestrator`)**: Executes linear delivery steps, manages `AbortController` cancellation signals, tracks progress, and transitions the state machine.
+* **`state-machine.ts` (`PipelineStateMachine`)**: Formal finite state machine governing legal phase transitions (`IDLE` $\rightarrow$ `VALIDATING` $\rightarrow$ `UPLOADING_R2` $\rightarrow$ ... $\rightarrow$ `COMPLETED`).
+* **`context.ts` (`PipelineContext`, `PipelineItem`)**: Shared execution context carrying batch item metadata, credentials, logging sinks, step results, and cancellation flags.
+* **`steps/`**: 12 isolated step implementations implementing the `PipelineStep` interface:
+  * `ValidateStep`, `UploadR2Step`, `VerifyR2Step`, `VerifyStreamStep`, `UpdateManifestStep`, `CleanupGitStep`, `VerifyGitignoreStep`, `RunTestsStep`, `CommitStep`, `PushStep`, `GitHubActionsStep`, `ProductionSmokeStep`.
+
+### 4. Engines Layer (`engines/`)
+* **`video/`**: Media inspection via FFprobe, stream validation, and deterministic key/filename normalization preserving original container format. (Note: Video encoding is performed externally in DaVinci Resolve).
+* **`r2/`**: Zero-dependency Cloudflare R2 S3-compatible client with AWS SigV4 signer, pre-flight idempotency HEAD checks, transient retry with exponential backoff, and byte-length verifier.
+* **`stream/`**: HTTP 206 partial content range tester asserting edge CDN byte-range responses (`Range: bytes=0-1048575`).
+* **`manifest/`**: Atomic JSON reader, schema validator, diff generator, and transactional writer with `.bak` rollback safety.
+* **`git/`**: Verifies clean working trees, checks `.gitignore` rules, untracks legacy video binaries, and stages commits safely.
+* **`github/`**: Polls the GitHub REST API to track GitHub Pages deployment workflows.
+* **`production/`**: Runs live smoke tests against the deployed production website and edge video streams.
+
+### 5. Core Layer (`core/`)
+* **`logger/`**: Structured logger with pluggable sinks (SSE streaming, terminal formatting) and automated secret redaction.
+* **`security/` (`SecretSanitizer`)**: Sanitizes credentials (`R2_SECRET_ACCESS_KEY`, `GITHUB_TOKEN`, PATs) from logs, errors, and JSON files.
+* **`state/` (`JobStore`)**: Persists job records to `data/jobs/<job-id>.json` and performs orphan recovery on startup.
+* **`errors/`**: Typed domain error classes for granular root-cause reporting.
+* **`filesystem/`**: Safe path resolution and directory boundary validation.
+
+### 6. Config Layer (`config/`)
+* **`pipeline.config.json`**: Supported input formats, R2 bucket URLs, directory mappings, timeouts, and retry policies. Strictly contains zero secrets.
+
+### 7. Tests Layer (`tests/`)
+* 64 test suites with 185 unit, security, and integration tests ensuring zero regressions.
 
 ---
 
-## 4. Manifest Management & Production Registry (Phase 05)
+## 3. Data Flow & Communication Architecture
 
-### Schema Specification
-```json
-[
-  {
-    "key": "WED_PHUNGTUONG.wed.mp4",
-    "url": "https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4",
-    "tag": "WED",
-    "name": "PHUNGTUONG"
-  }
-]
+```
+User Action (Drag & Drop / Run / Cancel)
+                 │
+                 ▼
+ Electron Window / Web Browser UI
+                 │  (HTTP POST /api/upload, /api/pipeline/run, /api/pipeline/cancel)
+                 ▼
+       PipelineUiServer (app/ui/server.ts)
+                 │
+                 ├──────────────────────────────┐
+                 ▼                              ▼
+      UploadService / QueueStore            JobStore (core/state/job-store.ts)
+       (Staging & Persistence)               (Persist RUNNING / CANCELLED / COMPLETED)
+                 │
+                 ▼
+     VideoPipelineOrchestrator (pipeline/pipeline.ts)
+                 │
+                 ├──────────────────────────────┐
+                 ▼                              ▼
+          Pipeline Steps                 PipelineLogger (SSE Broadcaster)
+       (Upload, Verify, Deploy)                 │
+                 │                              ▼
+                 ▼                    Live UI Progress / Terminal
+      Engines (FFprobe, R2, Git)
 ```
 
-### Architectural Controls
-1. **Verification Gate:** Only items with both `r2ObjectVerified === true` and `streamVerified === true` are permitted into the manifest.
-2. **Deterministic Merge:** Existing keys are updated without duplication; new entries are appended; all entries are sorted ascending by `key`.
-3. **Atomic File Writes:** Writes to temporary file `data/work-manifest.json.tmp`, executes `fs.renameSync`, re-reads from disk, and validates the result.
-4. **Transactional Rollback:** Backs up to `video-pipeline/temp/work-manifest.json.bak` before any write. If any step fails, restores original manifest immediately.
-5. **Security Isolation:** Manifest and logs are strictly audited to ensure zero tokens, secrets, or internal file paths exist in production data.
+---
+
+## 4. Key Architectural Patterns
+
+1. **Single Source of Truth**: Exactly one single `VideoPipelineOrchestrator` is used across CLI, Web, and Desktop modes. No duplicate or simulated pipelines exist.
+2. **Delivery-Only Pipeline**: Video encoding is done externally in DaVinci Resolve. The pipeline acts as a delivery vehicle preserving raw media bytes, container, and codec.
+3. **Transactional Manifests**: Writes to `data/work-manifest.json.tmp`, creates `temp/work-manifest.json.bak`, and executes atomic rename with automatic rollback on error.
+4. **Abort Signal Propagation**: `AbortController` signal is checked before every step and listened to by active network and pipeline tasks to ensure immediate termination on cancellation.
+5. **Zero-Secret Boundary**: All secrets reside strictly in `process.env` and are scrubbed by `SecretSanitizer` before writing to disk or emitting across SSE.

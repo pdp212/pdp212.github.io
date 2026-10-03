@@ -1,245 +1,144 @@
 # Video Pipeline
 
-Automated video ingestion, validation, transcoding, Cloudflare R2 deployment, manifest updating, and production verification system for the portfolio website ([pdp212.github.io](https://pdp212.github.io/)).
+> **Production-Ready Desktop & CLI Automated Video Delivery, R2 Deployment & Production Verification Pipeline for Portfolio**
+
+Video Pipeline is a specialized, zero-dependency, automated delivery pipeline. The final video is prepared externally in DaVinci Resolve according to project-specific production requirements. The Video Pipeline receives the final prepared video artifact, inspects it with FFprobe, securely uploads it to Cloudflare R2 without altering the original bytes or container, atomically updates the portfolio work manifest, enforces Git safety boundaries, and verifies live edge CDN playback with HTTP 206 streaming verification.
 
 ---
 
-## 1. Overview & Objective
-
-The **Video Pipeline** subproject automates the complete lifecycle of adding showcase videos to the portfolio without manual encoding, manual S3/R2 uploads, or manual JSON editing.
-
-### End-to-End Pipeline Target
-```
-OPEN APP
-   ↓
-DROP VIDEO (Single or Batch)          <-- Phase 02 Complete
-   ↓
-VALIDATE (Format, Headers, Filename)  <-- Phase 02 Complete
-   ↓
-ENCODE (Canonical H.264 Web Profile)  <-- Phase 03 Complete (LOCAL ENCODING ONLY)
-   ↓
-UPLOAD R2 (Cloudflare S3-compatible direct upload)  <-- Phase 04 Complete
-   ↓
-VERIFY R2 (HEAD object existence, size, ETag)       <-- Phase 04 Complete
-   ↓
-VERIFY HTTP 206 (Streaming byte-range check)        <-- Phase 04 Complete
-   ↓
-UPDATE WORK MANIFEST (data/work-manifest.json atomic update)  <-- Phase 05 Complete
-   ↓
-REMOVE GIT FALLBACK (Un-track local video files if present)   [Phase 06 Target]
-   ↓
-RUN TESTS (node scripts/validate.js pre-commit verification)
-   ↓
-GIT COMMIT (Atomic commit on main branch)
-   ↓
-GIT PUSH (Push to origin/main)
-   ↓
-GITHUB ACTIONS (Monitor remote Pages deployment workflow)
-   ↓
-PRODUCTION SMOKE TEST (Verify live CDN playback on pdp212.github.io)
-```
-
----
-
-## 2. Phase 05 Implementation Status (Manifest Management & Production Registry)
-
-### Highlights & Architectural Controls:
-- **Canonical Manifest Schema:**
-  ```json
-  [
-    {
-      "key": "WED_PHUNGTUONG.wed.mp4",
-      "url": "https://pub-2cc56f19f7ba4dae92294d5baaa8cfc6.r2.dev/WED_PHUNGTUONG.wed.mp4",
-      "tag": "WED",
-      "name": "PHUNGTUONG"
-    }
-  ]
-  ```
-- **Strict Verification Gate:**
-  - Only items with both `r2ObjectVerified === true` and `streamVerified === true` may enter the manifest. Unverified items block execution.
-- **Deterministic Identity & Extraction:**
-  - Derives `tag` and `name` deterministically (e.g. `TAG_NAME.mp4` or `TAG_NAME.TYPE.mp4`). Throws `ManifestError` on ambiguous names.
-- **Deterministic Merge & Sorting:**
-  - Updates existing keys without creating duplicates; appends new items; strictly sorts ascending by `key`.
-- **Atomic Transactional Writer with Rollback:**
-  1. Read and validate current manifest.
-  2. Create backup in `video-pipeline/temp/work-manifest.json.bak`.
-  3. Generate and validate updated entries.
-  4. Write to temporary file `data/work-manifest.json.tmp`.
-  5. Atomic rename via `fs.renameSync`.
-  6. Re-read and validate final manifest from disk.
-  7. If any step fails, restore from `.bak` and halt with `ManifestError`.
-- **Diff Engine & Dry-Run (`--dry-run`):**
-  - Computes `added`, `updated`, `unchanged`, and `removed` counts.
-  - Generates formatted ASCII summary box without disk mutations when dry-run is requested.
-- **Strict Phase Boundary:**
-  - Remote R2 is strictly read-only (no remote R2 PUT or overwrite).
-  - Zero Git operations (no `git add`, `git rm`, `git commit`, `git push`).
-  - Halts cleanly after `UPDATING_MANIFEST` stage.
-
----
-
-## 3. Phase 04 Implementation Status (R2 Upload + Stream Verification)
-
-### Architecture Highlights:
-- **Zero-Dependency Native AWS SigV4 Client (`engines/r2/r2-client.ts`):**
-  - Native HMAC-SHA256 signature derivation using `node:crypto`.
-  - Supports `PUT` upload and `HEAD` metadata inspection directly against Cloudflare R2 S3 endpoints.
-  - Zero external npm packages required.
-- **Idempotency & Collision Protection (`engines/r2/uploader.ts`):**
-  - Issues `HEAD` request before uploading. If remote object exists with identical `Content-Length` and `Content-Type: video/mp4`, skips upload and marks `ALREADY_UPLOADED`.
-  - Serialized concurrency (`concurrency: 1`) to guarantee deterministic bandwidth and auditability.
-- **Controlled Transient Retry (`engines/r2/uploader.ts`):**
-  - Retries transient 5xx server errors and network timeouts up to 3 times with exponential backoff.
-  - Never retries permanent errors (401/403 credentials, 404 bucket missing, invalid local file).
-- **Direct Object Verification (`engines/r2/verifier.ts`):**
-  - Executes `HEAD` requests directly against Cloudflare R2 to verify HTTP 200, Content-Type `video/mp4`, and exact byte-for-byte matching with local encoded MP4 size.
-- **HTTP 206 Byte-Range Streaming Verification (`engines/r2/stream-verifier.ts`):**
-  - Issues HTTP GET request with `Range: bytes=0-1048575` to public delivery URL.
-  - Strictly requires HTTP 206 Partial Content (HTTP 200 is rejected).
-  - Validates `Accept-Ranges: bytes`, parses `Content-Range: bytes 0-1048575/<total>`, and verifies payload body length > 0.
-- **Strict Phase Boundary:**
-  - Halts cleanly after `VERIFYING_STREAM`.
-  - Strictly zero modifications to `data/work-manifest.json` or portfolio website.
-  - Strictly zero Git commits or pushes.
-
----
-
-## 3. Phase 03 Implementation Status (LOCAL ENCODING ONLY)
-
-### Canonical Production Encoding Profile:
-| Attribute | Specification | Notes |
-|---|---|---|
-| **Container** | MP4 | Standard web container |
-| **Video Codec** | H.264 / AVC (`libx264`) | Universal web compatibility |
-| **Pixel Format** | `yuv420p` | Universal decoder compatibility |
-| **Quality (CRF)** | `18` | High perceptual fidelity |
-| **Encoder Preset** | `medium` | Balanced compression efficiency |
-| **H.264 Profile / Level** | `high` / `4.2` | Broad hardware acceleration support |
-| **Fast Start** | `-movflags +faststart` | Relocates moov atom for instant playback |
-| **Audio Codec** | AAC (`aac`) | High quality audio compression |
-| **Audio Bitrate** | `192 kbps` | Stereo audio bitrate |
-| **Audio Sample Rate**| `48000 Hz` | Standard production sample rate |
-| **Audio Channels** | Stereo (2 channels) | Preserves audio stream if present |
-| **Source Without Audio**| Handled (`-an`, `AUDIO: NONE`) | Does NOT fail or fabricate audio |
-| **Resolution** | Preserved | No upscaling, no cropping, no aspect ratio modification |
-| **Frame Rate** | Preserved | Matches source FPS |
-
-### What is implemented in Phase 03:
-- **Low-Level FFmpeg Runner (`VideoTranscoderService`):**
-  - Spawns external FFmpeg process asynchronously (`engines/video/ffmpeg.ts`).
-  - Streaming progress parsing from stderr (`time=`, `fps=`, `bitrate=`, `speed=`).
-  - Graceful cancellation (`SIGINT` -> `SIGKILL` after timeout) and temporary artifact cleanup.
-- **Output Safety & Atomic Promotion:**
-  - Files are encoded into temporary staging: `encoded/.tmp/<id>.mp4`.
-  - Incomplete or aborted encodes are wiped automatically.
-  - Finalized output is atomically promoted to: `video-pipeline/encoded/<NAME>.mp4`.
-- **Deterministic Filenames:**
-  - `WED_PHUNGTUONG.mov` -> `WED_PHUNGTUONG.mp4`.
-  - `MOTION BRAND FILM.mov` -> `MOTION_BRAND_FILM.mp4` (sanitizes spaces, removes duplicate extensions).
-- **Existing File Safety Gate:**
-  - If output exists and `allowOverwrite` is `false`, encoding blocks safely with `OutputExistsError`.
-- **Post-Encoding Deep Verification (`OutputValidator`):**
-  - Runs native FFprobe on encoded MP4 to assert container, codecs (`h264`, `aac`), pixel format (`yuv420p`), duration, resolution match, and frame rate match.
-- **UI Integration:**
-  - Interactive "Run Pipeline (Phase 03: Encode)" button enabled when READY videos exist.
-  - Runs `VALIDATE -> ENCODE -> VERIFY ENCODED OUTPUT -> STOP`.
-- **Master Video Safety:**
-  - Master source videos remain 100% read-only. Never moved, modified, or deleted.
-
-### What is strictly DEFERRED to Phase 04+:
-- Cloudflare R2 uploads or bucket modifications.
-- Live Git commits or pushes.
-- Production website or GitHub Pages deployment.
-
----
-
-## 3. Directory Structure
+## 1. System Overview
 
 ```
-video-pipeline/
-├── app/                  # Application bootstrap, CLI/UI presentation contracts
-│   ├── main/             # CLI entrypoint (bootstraps UI or CLI inspection)
-│   ├── ui/               # Local Web UI server (server.ts) & console adapters
-│   └── application/      # Lifecycle, VideoInput model, VideoQueue & InputController
-├── pipeline/             # Orchestrator & state machine
-│   ├── pipeline.ts       # Sequential pipeline orchestrator (supports stopAfterStage)
-│   ├── state-machine.ts  # Allowed transitions & illegal bypass prevention
-│   ├── context.ts        # Shared pipeline context & VideoInput converter
-│   └── steps/            # 13 step definitions (encode.ts production transcode)
-├── engines/              # Technical engines (independent tools)
-│   ├── video/            # FFprobe parser, FFmpeg process runner, output validator, video facade
-│   ├── r2/               # Cloudflare R2 client, uploader, & HTTP 206 verifier [Phase 04]
-│   ├── manifest/         # Atomic reader, validator, and writer for work-manifest.json
-│   ├── git/              # Git client, status checker, cleanup, & safety guards
-│   ├── github/           # GitHub Actions deployment monitor
-│   └── production/       # Production live smoke test & network verifier
-├── core/                 # Shared foundations
-│   ├── errors/           # Typed error hierarchy (16 error classes including encoding errors)
-│   ├── logger/           # Structured logger with automatic secret redaction
-│   ├── state/            # Immutable state store & transition audit trail
-│   ├── filesystem/       # Non-destructive file lifecycle manager & atomic promotion
-│   └── security/         # Environment credential boundary & sanitization
-├── config/               # Configuration (Strictly zero secrets)
-│   ├── pipeline.config.json # Canonical production profile (CRF 18, high 4.2, yuv420p)
-│   └── schema/
-├── tests/                # Test suites & fixtures (30 tests across 11 suites, 100% pass)
-│   ├── unit/             # VideoEncoder, OutputValidator, EncodeStep, VideoQueue, Inspector tests
-│   ├── security/         # Secret redaction & credential boundary tests
-│   ├── integration/      # Encoding pipeline, UI server, input handoff, dry-run integration tests
-│   └── fixtures/         # Valid & invalid manifest test samples
-├── scripts/              # Helper & validation scripts (typecheck.sh)
-├── temp/                 # Temporary working files (.gitkeep)
-├── encoded/              # Final production encoded artifacts (.gitkeep, ignored in Git)
-│   └── .tmp/             # Temporary staging folder for atomic promotion
-├── completed/            # Successfully processed artifacts (.gitkeep)
-├── failed/               # Quarantine for failed processing (.gitkeep)
-├── .env.example          # Environment credential template (never commit .env)
-├── .gitignore
-├── package.json
-├── tsconfig.json
-└── README.md
+ FINAL PREPARED VIDEO (MP4, MOV, MKV, AVI, MXF, WEBM)
+ (Prepared externally in DaVinci Resolve)
+       │
+       ▼
+ ┌─────────────────────────────────────────┐
+ │ 1. INGEST & VALIDATE                    │ ──► FFprobe metadata validation
+ └─────────────────┬───────────────────────┘
+                   ▼
+ ┌─────────────────────────────────────────┐
+ │ 2. UPLOAD R2 (AWS SigV4 Signer)         │ ──► Pre-flight HEAD idempotency & direct upload
+ └─────────────────┬───────────────────────┘
+                   ▼
+ ┌─────────────────────────────────────────┐
+ │ 3. VERIFY R2 (HEAD Check)               │ ──► Content-Type & byte length check
+ └─────────────────┬───────────────────────┘
+                   ▼
+ ┌─────────────────────────────────────────┐
+ │ 4. VERIFY HTTP 206 (Byte-Range Stream)  │ ──► Range: bytes=0-1048575 verification
+ └─────────────────┬───────────────────────┘
+                   ▼
+ ┌─────────────────────────────────────────┐
+ │ 5. UPDATE MANIFEST                      │ ──► Atomic transactional update & backup
+ └─────────────────┬───────────────────────┘
+                   ▼
+ ┌─────────────────────────────────────────┐
+ │ 6. GIT SAFETY & CLEANUP                 │ ──► Untrack legacy binaries, check .gitignore
+ └─────────────────┬───────────────────────┘
+                   ▼
+ ┌─────────────────────────────────────────┐
+ │ 7. RUN TESTS                            │ ──► Portfolio validation test suite
+ └─────────────────┬───────────────────────┘
+                   ▼
+ ┌─────────────────────────────────────────┐
+ │ 8. COMMIT & PUSH                        │ ──► Clean atomic git commits
+ └─────────────────┬───────────────────────┘
+                   ▼
+ ┌─────────────────────────────────────────┐
+ │ 9. GITHUB ACTIONS & PRODUCTION SMOKE    │ ──► Remote workflow polling & live check
+ └─────────────────────────────────────────┘
 ```
 
 ---
 
-## 4. Quick Start & Verification
+## 2. Key Features
+
+* **Desktop Application**: Packaged with Electron for macOS. Starts an internal server automatically and opens a native window with Drag & Drop and File Picker support.
+* **Delivery-Only Architecture**: Video encoding is handled externally in DaVinci Resolve. The pipeline preserves original video bytes, container, resolution, FPS, and codecs.
+* **Real-time Pipeline Cancellation**: Powered by `AbortController` and network aborts. Cancelling instantly halts active uploads and prevents downstream mutations.
+* **Persistent Video Queue**: State saved automatically to `data/queue.json` on queue mutations; automatically restores on application startup after validating on-disk media.
+* **Persistent Job History**: Full execution audit records persisted to `data/jobs/<job-id>.json`. Recovers orphaned running jobs upon application restart.
+* **Zero-Leak Security Boundary**: Standardized `SecretSanitizer` redacts sensitive tokens (`R2_SECRET_ACCESS_KEY`, `GITHUB_TOKEN`, PATs) across all SSE streams, logs, job records, and API responses.
+* **Native Cloudflare R2 Engine**: S3-compatible client with built-in AWS SigV4 signer, pre-flight idempotency checks, and serialized concurrency.
+* **Edge Streaming Verification**: Verifies HTTP 206 Partial Content delivery with `Range: bytes=0-1048575` headers against Cloudflare's public CDN edge.
+* **Atomic Manifest Management**: Transactional updates to `data/work-manifest.json` backed by temporary backups and atomic `fs.renameSync`.
+
+---
+
+## 3. Supported Input Formats
+
+The pipeline accepts final exported videos in multiple formats configured in `pipeline.config.json`:
+* `.mp4`
+* `.mov`
+* `.mkv`
+* `.avi`
+* `.mxf`
+* `.webm`
+
+---
+
+## 4. Quick Start
 
 ### Prerequisites
-- Node.js `v20+` or `v22+` (Current environment: `v24.18.1`)
-- npm `10+`
-- `ffmpeg` & `ffprobe` (e.g., via `brew install ffmpeg`)
+* **Node.js**: v20+ or v22+
+* **FFprobe**: Installed and available on system `$PATH` (`brew install ffmpeg` for ffprobe)
+* **Environment Variables**: Copy `.env.example` to `.env` and fill in Cloudflare R2 and GitHub credentials.
 
-### 1. Launch Interactive Local UI Tool
-```bash
-cd video-pipeline
-npm run ui
-```
-Opens the interactive browser tool at `http://127.0.0.1:3210`.
+### Development Commands
 
-### 2. Run CLI Video Ingestion & Inspection
 ```bash
+# Navigate to pipeline workspace
 cd video-pipeline
+
+# Install dependencies
+npm install
+
+# Run TypeScript compilation
 npm run build
-node dist/app/main/index.js /path/to/video1.mov /path/to/video2.mp4
+
+# Type check codebase without emitting
+npm run typecheck
+
+# Run full test suite (185 tests)
+npm test
+
+# Launch Web UI mode (Fastify server on http://127.0.0.1:3210)
+npm run ui
+
+# Launch Desktop App (Electron)
+npm run desktop:dev
 ```
 
-### 3. Run Test Suites
+### Packaging Commands
+
 ```bash
-cd video-pipeline
-npm run typecheck
-npm test
+# Build desktop distribution
+npm run desktop:build
+
+# Package standalone macOS application
+npm run desktop:package
 ```
 
 ---
 
-## 5. Security & Credentials Policy
+## 5. Documentation Directory
 
-All credentials must be supplied exclusively via environment variables:
-- `R2_ACCOUNT_ID`: Cloudflare account identifier
-- `R2_ACCESS_KEY_ID`: Cloudflare R2 access key
-- `R2_SECRET_ACCESS_KEY`: Cloudflare R2 secret key
-- `GITHUB_TOKEN`: GitHub personal access token (workflow & repo permissions)
+For in-depth details on architecture, operations, and security, refer to the documentation set:
 
-Secrets are **never** committed to version control, never written to `pipeline.config.json`, and never logged in plain text.
-In Phase 03, zero network uploads or external credential checks are performed. All encoding operations run locally.
+* 📚 [**Documentation Index**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/DOCUMENTATION.md) — Directory of all documents and recommended reading paths.
+* 🖥️ [**User Guide**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/USER_GUIDE.md) — Operational instructions for running the application.
+* 🏛️ [**Architecture Specification**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/ARCHITECTURE.md) — Complete 7-layer design and module boundaries.
+* ⚙️ [**Pipeline Specification**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/PIPELINE.md) — State machine, step transitions, and failure policies.
+* 💻 [**Desktop Guide**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/DESKTOP.md) — Electron packaging, window lifecycle, and native integration.
+* 🔌 [**REST & SSE API**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/API.md) — Full API reference for HTTP endpoints and live SSE event streams.
+* 📊 [**Data Model**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/DATA_MODEL.md) — TypeScript type definitions and persistent storage schemas.
+* 🔄 [**Job Lifecycle**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/JOB_LIFECYCLE.md) — Job states, persistence, and crash recovery mechanics.
+* 🛑 [**Cancellation Guide**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/CANCELLATION.md) — Abort propagation, FFmpeg SIGKILL, and safety boundaries.
+* 🛠️ [**Development Guide**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/DEVELOPMENT.md) — Setup guide, tooling, and coding standards.
+* 🧪 [**Testing Guide**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/TESTING.md) — Test architecture and verification baseline (185 tests passing).
+* ⚙️ [**Configuration**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/CONFIGURATION.md) — `pipeline.config.json` and environment variables.
+* 🔒 [**Security Model**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/SECURITY.md) — Credential protection, secret sanitization, and path traversal guards.
+* 🚨 [**Troubleshooting**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/TROUBLESHOOTING.md) — Solutions for common operational errors.
+* 📦 [**Release Guide**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/RELEASE.md) — Release checklists and desktop packaging procedures.
+* 📜 [**Phase History**](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/PHASE_HISTORY.md) — Chronological evolution from Phase 01 to Phase 10.

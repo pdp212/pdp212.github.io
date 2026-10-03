@@ -12,6 +12,26 @@ import {
   R2RetryExhaustedError,
 } from '../../core/errors/pipeline-errors.js';
 
+export function getVideoContentType(filePathOrKey: string): string {
+  const ext = path.extname(filePathOrKey).toLowerCase();
+  switch (ext) {
+    case '.mp4':
+      return 'video/mp4';
+    case '.mov':
+      return 'video/quicktime';
+    case '.webm':
+      return 'video/webm';
+    case '.mkv':
+      return 'video/x-matroska';
+    case '.avi':
+      return 'video/x-msvideo';
+    case '.mxf':
+      return 'application/mxf';
+    default:
+      return 'video/mp4';
+  }
+}
+
 export interface UploadProgress {
   bytesLoaded: number;
   totalBytes: number;
@@ -63,25 +83,26 @@ export class CloudflareR2Uploader implements R2Uploader {
   }
 
   /**
-   * Uploads a single encoded video file with idempotency and retry protection.
+   * Uploads a single validated video file with idempotency and retry protection.
    */
   public async upload(
     filePath: string,
     key: string,
-    contentType = 'video/mp4',
+    contentType?: string,
     onProgress?: (progress: UploadProgress) => void
   ): Promise<UploadResult> {
     const fileName = path.basename(filePath);
+    const resolvedContentType = contentType || getVideoContentType(key || filePath);
     const publicUrl = this.client.getPublicUrl(key);
 
     // 1. Verify local file existence & accessibility
     if (!fs.existsSync(filePath)) {
-      throw new R2UploadError(`Local encoded file does not exist: ${filePath}`, { filePath });
+      throw new R2UploadError(`Source video file does not exist: ${filePath}`, { filePath });
     }
 
     const stat = fs.statSync(filePath);
     if (stat.size === 0) {
-      throw new R2UploadError(`Local encoded file is empty (0 bytes): ${filePath}`, { filePath });
+      throw new R2UploadError(`Source video file is empty (0 bytes): ${filePath}`, { filePath });
     }
 
     const localSize = stat.size;
@@ -91,7 +112,12 @@ export class CloudflareR2Uploader implements R2Uploader {
       const head = await this.client.headObject(key);
       if (head.exists && head.contentLength === localSize) {
         const remoteType = (head.contentType || '').toLowerCase();
-        if (remoteType === contentType.toLowerCase() || remoteType.includes('video/mp4')) {
+        const matchesContentType =
+          remoteType === resolvedContentType.toLowerCase() ||
+          remoteType.startsWith('video/') ||
+          remoteType.includes('mp4') ||
+          remoteType.includes('quicktime');
+        if (matchesContentType) {
           if (onProgress) {
             onProgress({ bytesLoaded: localSize, totalBytes: localSize, percent: 100 });
           }
@@ -101,7 +127,7 @@ export class CloudflareR2Uploader implements R2Uploader {
             objectKey: key,
             publicUrl,
             size: localSize,
-            contentType,
+            contentType: resolvedContentType,
             status: 'ALREADY_UPLOADED',
             etag: head.etag,
           };
@@ -140,7 +166,7 @@ export class CloudflareR2Uploader implements R2Uploader {
           objectKey: key,
           publicUrl,
           size: localSize,
-          contentType,
+          contentType: resolvedContentType,
           status: 'UPLOADED',
           etag: putResult.etag,
         };

@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790929129870_lrnpw",
+  "pipelineId": "pipe_1790929129885",
+  "createdAt": "2026-10-02T08:18:49.870Z",
+  "startedAt": "2026-10-02T08:18:49.870Z",
+  "completedAt": "2026-10-02T08:18:49.958Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790929129861_yumrf",
+      "filename": "vid_1790929129861_yumrf",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 71
+}

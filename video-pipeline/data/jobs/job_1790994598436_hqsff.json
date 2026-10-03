@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790994598436_hqsff",
+  "pipelineId": "pipe_1790994598438",
+  "createdAt": "2026-10-03T02:29:58.436Z",
+  "startedAt": "2026-10-03T02:29:58.436Z",
+  "completedAt": "2026-10-03T02:31:02.056Z",
+  "status": "FAILED",
+  "currentStage": "FAILED",
+  "inputCount": 1,
+  "completedCount": 0,
+  "failedCount": 1,
+  "items": [
+    {
+      "id": "vid_1790994596057_o8oek",
+      "filename": "vid_1790994596057_o8oek",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": false,
+  "error": "[RUNNING_TESTS] Test command 'node scripts/validate.js' failed: node:fs:441\n    return binding.readFileUtf8(path, stringToFlags(options.flag));\n                   ^\n\nError: ETIMEDOUT: connection timed out, read\n    at Object.readFileSync (node:fs:441:20)\n    at Object.<anonymous> (/Users/sss-phat/Documents/github-portfolio/scripts/validate.js:38:25)\n    at Module._compile (node:internal/modules/cjs/loader:1871:14)\n    at Object..js (node:internal/modules/cjs/loader:2002:10)\n    at Module.load (node:internal/modules/cjs/loader:1594:32)\n    at Module._load (node:internal/modules/cjs/loader:1396:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  errno: -60,\n  code: 'ETIMEDOUT',\n  syscall: 'read'\n}\n\nNode.js v24.18.1\n",
+  "durationMs": 63614
+}

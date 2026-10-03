@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790928736495_bs77t",
+  "pipelineId": "pipe_1790928736515",
+  "createdAt": "2026-10-02T08:12:16.495Z",
+  "startedAt": "2026-10-02T08:12:16.495Z",
+  "completedAt": "2026-10-02T08:12:16.580Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790928736476_ymfge",
+      "filename": "vid_1790928736476_ymfge",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 63
+}

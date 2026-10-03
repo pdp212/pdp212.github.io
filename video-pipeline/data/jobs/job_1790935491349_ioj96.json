@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790935491349_ioj96",
+  "pipelineId": "pipe_1790935491355",
+  "createdAt": "2026-10-02T10:04:51.349Z",
+  "startedAt": "2026-10-02T10:04:51.349Z",
+  "completedAt": "2026-10-02T10:04:51.397Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790935491348_6spfv",
+      "filename": "vid_1790935491348_6spfv",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 42
+}

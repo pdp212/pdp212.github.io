@@ -1,0 +1,37 @@
+{
+  "jobId": "job_1790928697391_43s0u",
+  "pipelineId": "pipe_1790928697400",
+  "createdAt": "2026-10-02T08:11:37.391Z",
+  "startedAt": "2026-10-02T08:11:37.391Z",
+  "completedAt": "2026-10-02T08:11:37.424Z",
+  "status": "CANCELLED",
+  "currentStage": "CANCELLED",
+  "inputCount": 4,
+  "completedCount": 0,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790928697386_m6mja",
+      "filename": "vid_1790928697386_m6mja",
+      "status": "VALIDATED"
+    },
+    {
+      "id": "vid_1790928697386_us1l7",
+      "filename": "vid_1790928697386_us1l7",
+      "status": "VALIDATED"
+    },
+    {
+      "id": "vid_1790928697387_s21tp",
+      "filename": "vid_1790928697387_s21tp",
+      "status": "VALIDATED"
+    },
+    {
+      "id": "vid_1790928697388_zmzec",
+      "filename": "vid_1790928697388_zmzec",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": "Pipeline cancelled by user",
+  "durationMs": 33
+}

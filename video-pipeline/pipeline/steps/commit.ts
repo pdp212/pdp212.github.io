@@ -23,9 +23,10 @@ import {
 } from './_utils.js';
 
 /** Files and directories allowed to appear in the staged diff for Phase 07. */
-const ALLOWED_CHANGE_PATTERNS: RegExp[] = [
+export const ALLOWED_CHANGE_PATTERNS: RegExp[] = [
   /^\.gitignore$/,
   /^video-pipeline\//,
+  /^data\/work-manifest\.json$/,
 ];
 
 /** Commit message mandated by promt 07. */
@@ -68,8 +69,13 @@ export class CommitStep implements PipelineStep {
       context.logger.info(this.stage, 'STAGED_FILES_OK', 'Only permitted files are modified.');
 
       // 5. Stage the allowed paths
-      await execAsync('git add .gitignore video-pipeline', { cwd: portfolioRoot });
-      context.logger.info(this.stage, 'STAGED', 'Staged .gitignore and video-pipeline/.');
+      const manifestRelPath = context.config.manifest?.relativeFilePath || 'data/work-manifest.json';
+      await execAsync(`git add .gitignore video-pipeline "${manifestRelPath}"`, { cwd: portfolioRoot });
+      context.logger.info(
+        this.stage,
+        'STAGED',
+        `Staged .gitignore, video-pipeline/, and ${manifestRelPath}.`
+      );
 
       // 6. Execute commit
       await execAsync(`git commit -m "${COMMIT_MSG}"`, { cwd: portfolioRoot });

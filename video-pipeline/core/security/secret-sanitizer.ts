@@ -1,7 +1,5 @@
-/**
- * Secret Boundary and Sanitization Utilities
- * Enforces strict environment-only access for credentials and redacts sensitive data from logs.
- */
+import fs from 'node:fs';
+import path from 'node:path';
 
 export interface PipelineCredentials {
   r2AccountId: string;
@@ -21,9 +19,52 @@ export class SecretSanitizer {
   ];
 
   /**
+   * Safely loads project-local .env files into process.env without overriding existing environment variables.
+   */
+  public static loadEnv(customSearchDirs?: string[]): void {
+    const searchDirs = customSearchDirs || [
+      process.cwd(),
+      path.resolve(process.cwd(), 'video-pipeline'),
+      path.resolve(process.cwd(), '..'),
+    ];
+
+    for (const dir of searchDirs) {
+      const envPath = path.resolve(dir, '.env');
+      if (fs.existsSync(envPath)) {
+        try {
+          const content = fs.readFileSync(envPath, 'utf8');
+          const lines = content.split('\n');
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) continue;
+            const eqIdx = trimmed.indexOf('=');
+            if (eqIdx > 0) {
+              const key = trimmed.slice(0, eqIdx).trim();
+              let val = trimmed.slice(eqIdx + 1).trim();
+              if (
+                (val.startsWith('"') && val.endsWith('"')) ||
+                (val.startsWith("'") && val.endsWith("'"))
+              ) {
+                val = val.slice(1, -1);
+              }
+              // Only set if not already defined in environment
+              if ((process.env[key] === undefined || process.env[key] === '') && val) {
+                process.env[key] = val;
+              }
+            }
+          }
+        } catch {
+          // Ignore read errors gracefully
+        }
+      }
+    }
+  }
+
+  /**
    * Validates that essential environment credentials exist without exposing their values.
    */
   public static validateEnvironment(): { valid: boolean; missing: string[] } {
+    this.loadEnv();
     const missing: string[] = [];
 
     for (const key of this.KNOWN_SECRET_ENV_KEYS) {
@@ -45,6 +86,7 @@ export class SecretSanitizer {
    * Throws an error if required credentials are missing.
    */
   public static getCredentials(requireGitHubToken = false): PipelineCredentials {
+    this.loadEnv();
     const r2AccountId = process.env.R2_ACCOUNT_ID?.trim();
     const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
     const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
@@ -87,8 +129,8 @@ export class SecretSanitizer {
     }
 
     // Additional safeguard for GitHub PAT formats (ghp_*, github_pat_*)
-    sanitized = sanitized.replace(/ghp_[a-zA-Z0-9]{36}/g, '[REDACTED_GITHUB_PAT]');
-    sanitized = sanitized.replace(/github_pat_[a-zA-Z0-9_]{50,}/g, '[REDACTED_GITHUB_PAT]');
+    sanitized = sanitized.replace(/ghp_[a-zA-Z0-9]{20,}/g, '[REDACTED_GITHUB_PAT]');
+    sanitized = sanitized.replace(/github_pat_[a-zA-Z0-9_]{30,}/g, '[REDACTED_GITHUB_PAT]');
 
     return sanitized;
   }

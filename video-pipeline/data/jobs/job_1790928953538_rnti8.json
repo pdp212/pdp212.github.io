@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790928953538_rnti8",
+  "pipelineId": "pipe_1790928953553",
+  "createdAt": "2026-10-02T08:15:53.538Z",
+  "startedAt": "2026-10-02T08:15:53.538Z",
+  "completedAt": "2026-10-02T08:15:53.612Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790928953536_7odre",
+      "filename": "vid_1790928953536_7odre",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 56
+}

@@ -69,7 +69,7 @@ describe('Phase 04 Pipeline R2 End-to-End Integration', () => {
       config: dummyConfig,
       logger,
       stateStore: new PipelineStateStore('pipe_batch_success'),
-      currentStage: 'ENCODING',
+      currentStage: 'VALIDATING',
       items: [
         { id: '1', sourcePath: dummyFile, filename: 'p1.mp4', tag: 'TAG', name: 'V1', targetKey: 'V1.mp4', encodedLocalPath: dummyFile, status: 'ENCODED' },
         { id: '2', sourcePath: dummyFile, filename: 'p2.mp4', tag: 'TAG', name: 'V2', targetKey: 'V2.mp4', encodedLocalPath: dummyFile, status: 'ENCODED' },
@@ -144,7 +144,7 @@ describe('Phase 04 Pipeline R2 End-to-End Integration', () => {
       config: dummyConfig,
       logger,
       stateStore: new PipelineStateStore('pipe_batch_fail'),
-      currentStage: 'ENCODING',
+      currentStage: 'VALIDATING',
       items: [
         { id: '1', sourcePath: dummyFile, filename: 'p1.mp4', tag: 'TAG', name: 'V1', targetKey: 'V1.mp4', encodedLocalPath: dummyFile, status: 'ENCODED' },
         { id: '2', sourcePath: dummyFile, filename: 'p2.mp4', tag: 'TAG', name: 'V2', targetKey: 'V2.mp4', encodedLocalPath: dummyFile, status: 'ENCODED' },

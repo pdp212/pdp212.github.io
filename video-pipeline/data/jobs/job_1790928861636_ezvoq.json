@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790928861636_ezvoq",
+  "pipelineId": "pipe_1790928861646",
+  "createdAt": "2026-10-02T08:14:21.636Z",
+  "startedAt": "2026-10-02T08:14:21.636Z",
+  "completedAt": "2026-10-02T08:14:21.702Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790928861633_cifjv",
+      "filename": "vid_1790928861633_cifjv",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 55
+}

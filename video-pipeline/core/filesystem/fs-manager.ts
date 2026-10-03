@@ -32,31 +32,20 @@ export class FilesystemManager {
    * Resolves absolute directory paths based on configuration.
    */
   public getDirectoryPath(dirKey: keyof DirectoryConfig): string {
-    return path.resolve(this.rootDir, this.directories[dirKey]);
-  }
-
-  /**
-   * Returns temporary staging directory for atomic encoding.
-   */
-  public getEncodedTempDir(): string {
-    return path.join(this.getDirectoryPath('encoded'), '.tmp');
+    const dir = this.directories[dirKey] || `./${String(dirKey)}`;
+    return path.resolve(this.rootDir, dir);
   }
 
   /**
    * Initializes pipeline directories if they do not exist.
    */
   public ensureDirectoriesExist(): void {
-    const keys: (keyof DirectoryConfig)[] = ['temp', 'encoded', 'completed', 'failed'];
+    const keys: (keyof DirectoryConfig)[] = ['temp', 'completed', 'failed'];
     for (const key of keys) {
       const fullPath = this.getDirectoryPath(key);
       if (!fs.existsSync(fullPath)) {
         fs.mkdirSync(fullPath, { recursive: true });
       }
-    }
-
-    const tmpEncoded = this.getEncodedTempDir();
-    if (!fs.existsSync(tmpEncoded)) {
-      fs.mkdirSync(tmpEncoded, { recursive: true });
     }
   }
 

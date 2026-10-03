@@ -9,8 +9,7 @@ import { PipelineStateMachine } from '../../pipeline/state-machine.js';
 describe('Pipeline State Machine', () => {
   test('allows legal linear transitions', () => {
     assert.strictEqual(PipelineStateMachine.canTransition('IDLE', 'VALIDATING'), true);
-    assert.strictEqual(PipelineStateMachine.canTransition('VALIDATING', 'ENCODING'), true);
-    assert.strictEqual(PipelineStateMachine.canTransition('ENCODING', 'UPLOADING_R2'), true);
+    assert.strictEqual(PipelineStateMachine.canTransition('VALIDATING', 'UPLOADING_R2'), true);
     assert.strictEqual(PipelineStateMachine.canTransition('UPLOADING_R2', 'VERIFYING_R2'), true);
     assert.strictEqual(PipelineStateMachine.canTransition('VERIFYING_R2', 'VERIFYING_STREAM'), true);
     assert.strictEqual(PipelineStateMachine.canTransition('VERIFYING_STREAM', 'UPDATING_MANIFEST'), true);
@@ -34,7 +33,6 @@ describe('Pipeline State Machine', () => {
 
   test('allows transitions to FAILED or CANCELLED from operational stages', () => {
     assert.strictEqual(PipelineStateMachine.canTransition('VALIDATING', 'FAILED'), true);
-    assert.strictEqual(PipelineStateMachine.canTransition('ENCODING', 'FAILED'), true);
     assert.strictEqual(PipelineStateMachine.canTransition('UPLOADING_R2', 'FAILED'), true);
     assert.strictEqual(PipelineStateMachine.canTransition('RUNNING_TESTS', 'FAILED'), true);
     assert.strictEqual(PipelineStateMachine.canTransition('VALIDATING', 'CANCELLED'), true);

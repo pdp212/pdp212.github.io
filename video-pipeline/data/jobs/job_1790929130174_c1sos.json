@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790929130174_c1sos",
+  "pipelineId": "pipe_1790929130183",
+  "createdAt": "2026-10-02T08:18:50.174Z",
+  "startedAt": "2026-10-02T08:18:50.174Z",
+  "completedAt": "2026-10-02T08:18:50.227Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790929130171_2h4bg",
+      "filename": "vid_1790929130171_2h4bg",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 44
+}

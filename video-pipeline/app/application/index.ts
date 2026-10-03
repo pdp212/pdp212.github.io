@@ -16,6 +16,8 @@ import { InputController } from './input-controller.js';
 export * from './video-input.js';
 export * from './video-queue.js';
 export * from './input-controller.js';
+export * from './upload-service.js';
+export * from './queue-store.js';
 
 export interface AppInitOptions {
   config: PipelineConfig;

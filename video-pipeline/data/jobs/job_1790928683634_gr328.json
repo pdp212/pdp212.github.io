@@ -1,0 +1,27 @@
+{
+  "jobId": "job_1790928683634_gr328",
+  "pipelineId": "pipe_1790928683645",
+  "createdAt": "2026-10-02T08:11:23.634Z",
+  "startedAt": "2026-10-02T08:11:23.634Z",
+  "completedAt": "2026-10-02T08:11:23.719Z",
+  "status": "CANCELLED",
+  "currentStage": "CANCELLED",
+  "inputCount": 2,
+  "completedCount": 0,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790928683631_inuim",
+      "filename": "vid_1790928683631_inuim",
+      "status": "VALIDATED"
+    },
+    {
+      "id": "vid_1790928683632_lrik6",
+      "filename": "vid_1790928683632_lrik6",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": "Pipeline cancelled by user",
+  "durationMs": 85
+}

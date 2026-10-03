@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790928697438_kprl1",
+  "pipelineId": "pipe_1790928697438",
+  "createdAt": "2026-10-02T08:11:37.438Z",
+  "startedAt": "2026-10-02T08:11:37.438Z",
+  "completedAt": "2026-10-02T08:11:37.458Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790928697437_2wk2r",
+      "filename": "vid_1790928697437_2wk2r",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 20
+}

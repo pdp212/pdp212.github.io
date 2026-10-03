@@ -92,6 +92,29 @@ export class VideoQueue extends EventEmitter {
     return item && item.status !== 'REMOVED' ? item : undefined;
   }
 
+  public getInspector(): VideoInspector {
+    return this.inspector;
+  }
+
+  /**
+   * Cleans up temporary staged upload file if it resides in temp/uploads or has upload_ prefix.
+   */
+  private cleanupStagedFile(filePath: string): void {
+    try {
+      if (!filePath) return;
+      const resolved = path.resolve(filePath);
+      const isUpload =
+        resolved.includes(`${path.sep}temp${path.sep}uploads${path.sep}`) ||
+        resolved.includes('/temp/uploads/') ||
+        path.basename(resolved).startsWith('upload_');
+      if (isUpload && fs.existsSync(resolved)) {
+        fs.unlinkSync(resolved);
+      }
+    } catch {
+      // Non-critical staging cleanup error
+    }
+  }
+
   /**
    * Removes an item from the queue by ID.
    */
@@ -102,6 +125,7 @@ export class VideoQueue extends EventEmitter {
     }
     item.status = 'REMOVED';
     this.items.delete(id);
+    this.cleanupStagedFile(item.path);
     this.emit('item:removed', item);
     this.emit('queue:changed', this.getAll());
     return true;
@@ -111,6 +135,9 @@ export class VideoQueue extends EventEmitter {
    * Clears all items from the queue.
    */
   public clear(): void {
+    for (const item of this.items.values()) {
+      this.cleanupStagedFile(item.path);
+    }
     const removedCount = this.items.size;
     this.items.clear();
     this.emit('queue:cleared', removedCount);
@@ -118,9 +145,37 @@ export class VideoQueue extends EventEmitter {
   }
 
   /**
+   * Adds an invalid video record directly to the queue.
+   */
+  public addInvalidItem(fileName: string, error: string): VideoInput {
+    const id = `vid_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const extension = path.extname(fileName).toLowerCase();
+    const item: VideoInput = {
+      id,
+      path: '',
+      fileName,
+      extension,
+      size: 0,
+      addedAt: new Date().toISOString(),
+      status: 'INVALID',
+      validation: { valid: false, errors: [error] },
+      error,
+    };
+    this.items.set(id, item);
+    this.emit('item:added', item);
+    this.emit('item:invalid', item);
+    this.emit('queue:changed', this.getAll());
+    return item;
+  }
+
+  /**
    * Adds a single video to the queue, runs duplicate check, and triggers inspection.
    */
-  public async add(filePath: string): Promise<VideoInput> {
+  public async add(
+    filePath: string,
+    originalFileName?: string,
+    preloadedInspection?: { valid: boolean; metadata?: any; errors: string[] }
+  ): Promise<VideoInput> {
     const resolvedPath = path.resolve(filePath);
 
     // 1. Duplicate Detection Check
@@ -130,7 +185,7 @@ export class VideoQueue extends EventEmitter {
       return existing;
     }
 
-    const filename = path.basename(resolvedPath);
+    const filename = originalFileName || path.basename(resolvedPath);
     const extension = path.extname(filename).toLowerCase();
     const size = fs.existsSync(resolvedPath) ? fs.statSync(resolvedPath).size : 0;
     const id = `vid_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -149,6 +204,24 @@ export class VideoQueue extends EventEmitter {
     this.items.set(id, newItem);
     this.emit('item:added', newItem);
     this.emit('queue:changed', this.getAll());
+
+    // If preloaded inspection is already provided
+    if (preloadedInspection) {
+      if (preloadedInspection.valid && preloadedInspection.metadata) {
+        newItem.metadata = preloadedInspection.metadata;
+        newItem.validation = { valid: true, errors: [] };
+        newItem.status = 'READY';
+        this.emit('item:ready', newItem);
+      } else {
+        newItem.validation = { valid: false, errors: preloadedInspection.errors };
+        newItem.status = 'INVALID';
+        newItem.error = preloadedInspection.errors.join('; ');
+        this.emit('item:invalid', newItem);
+      }
+      this.emit('item:updated', newItem);
+      this.emit('queue:changed', this.getAll());
+      return newItem;
+    }
 
     // 2. Asynchronous Inspection
     return this.inspect(newItem);

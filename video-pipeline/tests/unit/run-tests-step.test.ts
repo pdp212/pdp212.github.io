@@ -59,4 +59,28 @@ describe('RunTestsStep Unit Tests', () => {
     assert.equal(result.success, false);
     assert.ok(result.message.includes('failed:'));
   });
+
+  it('verifies scripts/validate.js executes deterministically and quickly without timeout', async () => {
+    const pipelineId = `test-run-fast-${Date.now()}`;
+    const startTime = Date.now();
+    const context: PipelineContext = {
+      pipelineId,
+      isDryRun: false,
+      config: {
+        portfolioPath: rootDir,
+        testCommands: ['node scripts/validate.js'],
+      } as any,
+      logger: new PipelineLogger({ minLevel: 'WARN' }),
+      stateStore: new PipelineStateStore(pipelineId, false),
+      items: [],
+      currentStage: 'VERIFYING_GIT',
+    };
+
+    const step = new RunTestsStep();
+    const result = await step.execute(context);
+    const durationMs = Date.now() - startTime;
+
+    assert.equal(result.success, true);
+    assert.ok(durationMs < 5000, `Validation should complete quickly, took ${durationMs}ms`);
+  });
 });

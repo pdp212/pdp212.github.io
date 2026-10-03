@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790935800041_o6g5w",
+  "pipelineId": "pipe_1790935800043",
+  "createdAt": "2026-10-02T10:10:00.042Z",
+  "startedAt": "2026-10-02T10:10:00.042Z",
+  "completedAt": "2026-10-02T10:14:55.103Z",
+  "status": "FAILED",
+  "currentStage": "FAILED",
+  "inputCount": 1,
+  "completedCount": 0,
+  "failedCount": 1,
+  "items": [
+    {
+      "id": "vid_1790935797541_kdzp2",
+      "filename": "vid_1790935797541_kdzp2",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": false,
+  "error": "Safety gate blocked: disallowed file(s) would be staged:\n  data/work-manifest.json\nOnly .gitignore and video-pipeline/ changes are permitted in Phase 07.",
+  "durationMs": 295057
+}

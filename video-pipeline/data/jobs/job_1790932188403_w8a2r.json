@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790932188403_w8a2r",
+  "pipelineId": "pipe_1790932188407",
+  "createdAt": "2026-10-02T09:09:48.403Z",
+  "startedAt": "2026-10-02T09:09:48.403Z",
+  "completedAt": "2026-10-02T09:13:38.352Z",
+  "status": "FAILED",
+  "currentStage": "FAILED",
+  "inputCount": 1,
+  "completedCount": 0,
+  "failedCount": 1,
+  "items": [
+    {
+      "id": "vid_1790932182509_xe6qs",
+      "filename": "vid_1790932182509_xe6qs",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": false,
+  "error": "[UPLOADING_R2] Cannot proceed with R2 upload: Missing required Cloudflare R2 credentials in environment variables (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY).",
+  "durationMs": 229942
+}

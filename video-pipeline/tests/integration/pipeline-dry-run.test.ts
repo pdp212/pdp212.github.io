@@ -96,6 +96,6 @@ describe('Pipeline Dry Run Integration', () => {
 
     assert.strictEqual(result.success, true);
     assert.strictEqual(result.finalStage, 'COMPLETED');
-    assert.strictEqual(result.results.length, 13);
+    assert.strictEqual(result.results.length, 12);
   });
 });

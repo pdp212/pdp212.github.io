@@ -8,7 +8,6 @@ import type { PipelineContext } from './context.js';
 import type { PipelineStep, StepResult } from './steps/step-interface.js';
 import {
   ValidateStep,
-  EncodeStep,
   UploadR2Step,
   VerifyR2Step,
   VerifyStreamStep,
@@ -37,7 +36,6 @@ export class VideoPipelineOrchestrator {
   constructor(customSteps?: PipelineStep[]) {
     this.steps = customSteps || [
       new ValidateStep(),
-      new EncodeStep(),
       new UploadR2Step(),
       new VerifyR2Step(),
       new VerifyStreamStep(),
@@ -63,6 +61,22 @@ export class VideoPipelineOrchestrator {
     context.logger.info('IDLE', 'PIPELINE_START', `Starting video pipeline ${context.pipelineId} (DryRun: ${context.isDryRun})`);
 
     for (const step of this.steps) {
+      // 0. Check for cancellation before executing next step
+      if (context.abortController?.signal.aborted || context.isCancelled) {
+        context.isCancelled = true;
+        context.stateStore.transitionTo('CANCELLED', 'Pipeline execution cancelled by user request');
+        context.currentStage = 'CANCELLED';
+        context.logger.warn('CANCELLED', 'PIPELINE_CANCELLED', 'Pipeline execution cancelled by user request.');
+        return {
+          pipelineId: context.pipelineId,
+          success: false,
+          finalStage: 'CANCELLED',
+          durationMs: Date.now() - startTime,
+          results,
+          error: new Error('Pipeline execution cancelled by user request.'),
+        };
+      }
+
       // 1. Validate State Transition
       const transition = PipelineStateMachine.validateTransition(context.currentStage, step.stage);
       if (!transition.valid) {
@@ -87,6 +101,21 @@ export class VideoPipelineOrchestrator {
       try {
         const result = await step.execute(context);
         results.push(result);
+
+        // Check if aborted during step execution
+        if (context.abortController?.signal.aborted || context.isCancelled) {
+          context.stateStore.transitionTo('CANCELLED', 'Pipeline execution cancelled by user request');
+          context.currentStage = 'CANCELLED';
+          context.logger.warn('CANCELLED', 'PIPELINE_CANCELLED', 'Pipeline execution cancelled by user request.');
+          return {
+            pipelineId: context.pipelineId,
+            success: false,
+            finalStage: 'CANCELLED',
+            durationMs: Date.now() - startTime,
+            results,
+            error: new Error('Pipeline execution cancelled by user request.'),
+          };
+        }
 
         if (!result.success) {
           context.stateStore.transitionTo('FAILED', result.message);
@@ -114,6 +143,25 @@ export class VideoPipelineOrchestrator {
           };
         }
       } catch (err) {
+        const isCancelled =
+          context.abortController?.signal.aborted ||
+          context.isCancelled ||
+          (err instanceof Error && (err.name === 'PipelineCancelledError' || err.message.toLowerCase().includes('cancelled')));
+
+        if (isCancelled) {
+          context.stateStore.transitionTo('CANCELLED', 'Pipeline execution cancelled');
+          context.currentStage = 'CANCELLED';
+          context.logger.warn('CANCELLED', 'PIPELINE_CANCELLED', 'Pipeline execution cancelled during active step.');
+          return {
+            pipelineId: context.pipelineId,
+            success: false,
+            finalStage: 'CANCELLED',
+            durationMs: Date.now() - startTime,
+            results,
+            error: err instanceof Error ? err : new Error('Pipeline execution cancelled'),
+          };
+        }
+
         const error = err instanceof Error ? err : new Error(String(err));
         context.stateStore.transitionTo('FAILED', error.message);
         context.currentStage = 'FAILED';

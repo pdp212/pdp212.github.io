@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790991116170_dwyiy",
+  "pipelineId": "pipe_1790991116172",
+  "createdAt": "2026-10-03T01:31:56.170Z",
+  "startedAt": "2026-10-03T01:31:56.170Z",
+  "completedAt": "2026-10-03T01:37:33.201Z",
+  "status": "FAILED",
+  "currentStage": "FAILED",
+  "inputCount": 1,
+  "completedCount": 0,
+  "failedCount": 1,
+  "items": [
+    {
+      "id": "vid_1790990279331_61ocr",
+      "filename": "vid_1790990279331_61ocr",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": false,
+  "error": "[ENCODING] Encoded output failed verification against production profile: Frame rate mismatch: Expected 25 fps, got 29.97 fps.",
+  "durationMs": 337026
+}

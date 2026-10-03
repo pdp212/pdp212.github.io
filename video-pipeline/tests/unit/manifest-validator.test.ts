@@ -178,18 +178,18 @@ describe('ManifestValidator Unit Tests', () => {
     assert.ok(result.errors.some((e) => e.includes('assets/videos/projects/')));
   });
 
-  it('12. invalid extension rejected: key must end with .mp4', () => {
+  it('12. invalid extension rejected: key must have supported video extension', () => {
     const entries = [
       {
-        key: 'WED_SAMPLE.mov',
-        url: `${publicBaseUrl}/WED_SAMPLE.mov`,
+        key: 'WED_SAMPLE.txt',
+        url: `${publicBaseUrl}/WED_SAMPLE.txt`,
         tag: 'WED',
         name: 'SAMPLE',
       },
     ];
     const result = ManifestValidator.validate(entries, { publicBaseUrl });
     assert.equal(result.valid, false);
-    assert.ok(result.errors.some((e) => e.includes('key must end with .mp4')));
+    assert.ok(result.errors.some((e) => e.includes('valid video extension')));
   });
 
   it('13. valid R2 URL accepted', () => {
@@ -224,8 +224,8 @@ describe('ManifestValidator Unit Tests', () => {
     assert.equal(wed.tag, 'WED');
     assert.equal(wed.name, 'PHUNGTUONG');
 
-    const motion = extractTagAndName('MOTION_BRAND_FILM.mp4');
-    assert.equal(wed.tag, 'WED');
+    const motion = extractTagAndName('MOTION_BRAND_FILM.mov');
+    assert.equal(motion.tag, 'MOTION');
     assert.equal(motion.name, 'BRAND_FILM');
 
     const mv = extractTagAndName('MV_SUMMER_NIGHT.mp4');
@@ -236,9 +236,9 @@ describe('ManifestValidator Unit Tests', () => {
     assert.equal(doc.tag, 'DOC');
     assert.equal(doc.name, 'STREET_DN');
 
-    // Reject non-mp4
+    // Reject missing extension
     assert.throws(
-      () => extractTagAndName('WED_SAMPLE.mov'),
+      () => extractTagAndName('WED_SAMPLE'),
       (err: any) => err instanceof ManifestError
     );
 

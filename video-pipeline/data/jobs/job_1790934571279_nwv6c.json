@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790934571279_nwv6c",
+  "pipelineId": "pipe_1790934571281",
+  "createdAt": "2026-10-02T09:49:31.279Z",
+  "startedAt": "2026-10-02T09:49:31.279Z",
+  "completedAt": "2026-10-02T09:49:31.286Z",
+  "status": "FAILED",
+  "currentStage": "FAILED",
+  "inputCount": 1,
+  "completedCount": 0,
+  "failedCount": 1,
+  "items": [
+    {
+      "id": "vid_1790934565051_ange4",
+      "filename": "vid_1790934565051_ange4",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": false,
+  "error": "[ENCODING] Target output file already exists and overwrite is disabled: /Users/sss-phat/Documents/github-portfolio/video-pipeline/encoded/WED_TUTRA.001.mp4",
+  "durationMs": 2
+}

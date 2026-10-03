@@ -94,13 +94,12 @@ describe('UploadR2Step Pipeline Unit Test', () => {
       items: [
         {
           id: 'item_2',
-          sourcePath: '/path/to/RAW2.mov',
-          filename: 'RAW2.mov',
+          sourcePath: dummyEncodedFile,
+          filename: 'RAW2.mp4',
           tag: 'EVENT',
           name: 'EVENT_GALA',
           targetKey: 'EVENT_GALA.mp4',
-          encodedLocalPath: dummyEncodedFile,
-          status: 'ENCODED',
+          status: 'VALIDATED',
         },
       ],
     };

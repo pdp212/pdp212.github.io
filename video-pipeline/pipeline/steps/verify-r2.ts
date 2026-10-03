@@ -10,6 +10,7 @@ import {
   R2ClientFactory,
   R2Client,
   CloudflareR2Verifier,
+  getVideoContentType,
   type R2Verifier,
 } from '../../engines/r2/index.js';
 import { SecretSanitizer } from '../../core/security/secret-sanitizer.js';
@@ -29,7 +30,7 @@ export class VerifyR2Step implements PipelineStep {
 
   public async execute(context: PipelineContext): Promise<StepResult> {
     const itemsToVerify = context.items.filter(
-      (item) => item.status === 'UPLOADED' || item.status === 'ENCODED'
+      (item) => item.status === 'UPLOADED' || (item.status as string) === 'ENCODED'
     );
 
     context.logger.info(
@@ -61,7 +62,7 @@ export class VerifyR2Step implements PipelineStep {
         context.logger.info(
           this.stage,
           'DRY_RUN_PLAN',
-          `[Plan] WOULD VERIFY R2 OBJECT s3://${bucket}/${objectKey} (HEAD 200, Content-Type: video/mp4)`
+          `[Plan] WOULD VERIFY R2 OBJECT s3://${bucket}/${objectKey} (HEAD 200)`
         );
       }
 
@@ -102,14 +103,18 @@ export class VerifyR2Step implements PipelineStep {
     for (let i = 0; i < itemsToVerify.length; i++) {
       const item = itemsToVerify[i];
       const objectKey = item.objectKey || item.targetKey || item.filename;
-      const localPath = item.localEncodedPath || item.encodedLocalPath;
+      const localPath = item.sourcePath || item.localEncodedPath || item.encodedLocalPath;
 
       let expectedSize: number | undefined;
       if (localPath && fs.existsSync(localPath)) {
         expectedSize = fs.statSync(localPath).size;
+      } else if (item.sourceMetadata?.sizeBytes) {
+        expectedSize = item.sourceMetadata.sizeBytes;
       } else if (item.encodedMetadata?.sizeBytes) {
         expectedSize = item.encodedMetadata.sizeBytes;
       }
+
+      const expectedContentType = getVideoContentType(objectKey);
 
       context.logger.info(
         this.stage,
@@ -117,7 +122,7 @@ export class VerifyR2Step implements PipelineStep {
         `[${i + 1}/${itemsToVerify.length}] Probing HEAD s3://${bucket}/${objectKey}...`
       );
 
-      const result = await verifier.verifyObject(objectKey, expectedSize, 'video/mp4');
+      const result = await verifier.verifyObject(objectKey, expectedSize, expectedContentType);
 
       if (!result.passed) {
         const err = new R2VerificationError(result.error || `Verification failed for '${objectKey}'.`, {

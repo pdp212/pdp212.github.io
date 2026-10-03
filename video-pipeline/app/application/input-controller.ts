@@ -5,6 +5,7 @@
 
 import { VideoQueue } from './video-queue.js';
 import type { VideoInput } from './video-input.js';
+import { QueueStore } from './queue-store.js';
 import type { PipelineConfig } from '../../config/schema/index.js';
 import {
   type PipelineContext,
@@ -26,20 +27,67 @@ export class InputController {
   private readonly queue: VideoQueue;
   private readonly config: PipelineConfig;
   private readonly logger: PipelineLogger;
+  private readonly queueStore?: QueueStore;
 
-  constructor(config: PipelineConfig, queue?: VideoQueue, logger?: PipelineLogger) {
+  constructor(
+    config: PipelineConfig,
+    queue?: VideoQueue,
+    logger?: PipelineLogger,
+    queueStore?: QueueStore
+  ) {
     this.config = config;
     this.logger = logger || new PipelineLogger();
     this.queue = queue || new VideoQueue(config.supportedInputFormats);
+    this.queueStore = queueStore;
+
+    // Auto-persist on changes if queueStore is provided
+    if (this.queueStore) {
+      this.queue.on('queue:changed', (items: VideoInput[]) => {
+        this.queueStore?.save(items);
+      });
+      this.queue.on('queue:cleared', () => {
+        this.queueStore?.clear();
+      });
+    }
+  }
+
+  public async restoreQueue(): Promise<number> {
+    if (!this.queueStore) return 0;
+    const count = await this.queueStore.restore(this.queue, this.queue.getInspector());
+    if (count > 0) {
+      this.logger.info('IDLE', 'QUEUE_RESTORED', `Restored ${count} video(s) from persistent storage.`);
+    }
+    return count;
+  }
+
+  public getQueueStore(): QueueStore | undefined {
+    return this.queueStore;
   }
 
   public getQueue(): VideoQueue {
     return this.queue;
   }
 
-  public async addVideo(filePath: string): Promise<VideoInput> {
+  public getConfig(): PipelineConfig {
+    return this.config;
+  }
+
+  public getInspector() {
+    return this.queue.getInspector();
+  }
+
+  public async addVideo(
+    filePath: string,
+    originalFileName?: string,
+    preloadedInspection?: any
+  ): Promise<VideoInput> {
     this.logger.debug('VALIDATING', 'INPUT_ADD', `Ingesting file: ${filePath}`);
-    return this.queue.add(filePath);
+    return this.queue.add(filePath, originalFileName, preloadedInspection);
+  }
+
+  public addInvalidVideo(fileName: string, error: string): VideoInput {
+    this.logger.warn('VALIDATING', 'INPUT_INVALID', `Invalid file rejected: ${fileName} - ${error}`);
+    return this.queue.addInvalidItem(fileName, error);
   }
 
   public async addVideos(filePaths: string[]): Promise<VideoInput[]> {

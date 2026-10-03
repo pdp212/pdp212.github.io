@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790993739546_yhmh9",
+  "pipelineId": "pipe_1790993739563",
+  "createdAt": "2026-10-03T02:15:39.546Z",
+  "startedAt": "2026-10-03T02:15:39.546Z",
+  "completedAt": "2026-10-03T02:15:39.621Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790993739537_k918f",
+      "filename": "vid_1790993739537_k918f",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 57
+}

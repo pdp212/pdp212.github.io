@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790991049996_wrgvt",
+  "pipelineId": "pipe_1790991050002",
+  "createdAt": "2026-10-03T01:30:49.996Z",
+  "startedAt": "2026-10-03T01:30:49.996Z",
+  "completedAt": "2026-10-03T01:30:50.047Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790991049984_k0osh",
+      "filename": "vid_1790991049984_k0osh",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 44
+}

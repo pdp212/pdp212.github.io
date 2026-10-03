@@ -9,11 +9,11 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { CommitStep } from '../../pipeline/steps/commit.js';
+import { CommitStep, ALLOWED_CHANGE_PATTERNS } from '../../pipeline/steps/commit.js';
 import { PushStep } from '../../pipeline/steps/push.js';
 import { GitHubActionsStep } from '../../pipeline/steps/github-actions.js';
 import { ProductionSmokeStep } from '../../pipeline/steps/production-smoke.js';
-import { dryRunGuard } from '../../pipeline/steps/_utils.js';
+import { dryRunGuard, checkDisallowedFiles } from '../../pipeline/steps/_utils.js';
 import { PipelineLogger } from '../../core/logger/logger.js';
 import { PipelineStateStore } from '../../core/state/state-store.js';
 import type { PipelineContext } from '../../pipeline/context.js';
@@ -223,5 +223,74 @@ describe('Phase 07 step sequence validation', () => {
     ];
 
     assert.deepStrictEqual(stepOrder, [...expectedOrder]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 07 Commit Safety Gate & Manifest Policy (Phase 10B Regression Tests)
+// ---------------------------------------------------------------------------
+
+describe('Phase 07 Commit Safety Gate – Policy Enforcement', () => {
+  test('TEST 1: data/work-manifest.json is accepted', () => {
+    const disallowed = checkDisallowedFiles(['data/work-manifest.json'], ALLOWED_CHANGE_PATTERNS);
+    assert.deepStrictEqual(disallowed, []);
+  });
+
+  test('TEST 2: data/other.json is rejected', () => {
+    const disallowed = checkDisallowedFiles(['data/other.json'], ALLOWED_CHANGE_PATTERNS);
+    assert.deepStrictEqual(disallowed, ['data/other.json']);
+  });
+
+  test('TEST 3: data/video.mp4 is rejected', () => {
+    const disallowed = checkDisallowedFiles(['data/video.mp4', 'data/clip.mov', 'data/sample.mkv'], ALLOWED_CHANGE_PATTERNS);
+    assert.deepStrictEqual(disallowed, ['data/video.mp4', 'data/clip.mov', 'data/sample.mkv']);
+  });
+
+  test('TEST 4: .env is rejected', () => {
+    const disallowed = checkDisallowedFiles(['.env', '.env.local', '.env.production'], ALLOWED_CHANGE_PATTERNS);
+    assert.deepStrictEqual(disallowed, ['.env', '.env.local', '.env.production']);
+  });
+
+  test('TEST 5: video-pipeline/** remains accepted', () => {
+    const files = [
+      'video-pipeline/package.json',
+      'video-pipeline/pipeline/steps/commit.ts',
+      'video-pipeline/app/ui/server.ts',
+      'video-pipeline/core/security/secret-sanitizer.ts',
+    ];
+    const disallowed = checkDisallowedFiles(files, ALLOWED_CHANGE_PATTERNS);
+    assert.deepStrictEqual(disallowed, []);
+  });
+
+  test('TEST 6: .gitignore remains accepted', () => {
+    const disallowed = checkDisallowedFiles(['.gitignore'], ALLOWED_CHANGE_PATTERNS);
+    assert.deepStrictEqual(disallowed, []);
+  });
+
+  test('TEST 7: unrelated source files remain rejected', () => {
+    const files = ['src/index.html', 'js/main.js', 'styles/main.css', 'README.md'];
+    const disallowed = checkDisallowedFiles(files, ALLOWED_CHANGE_PATTERNS);
+    assert.deepStrictEqual(disallowed, files);
+  });
+
+  test('TEST 8: realistic staged file set (.gitignore, data/work-manifest.json, video-pipeline/...) passes safety gate', () => {
+    const stagedSet = [
+      '.gitignore',
+      'data/work-manifest.json',
+      'video-pipeline/package.json',
+      'video-pipeline/pipeline/steps/commit.ts',
+    ];
+    const disallowed = checkDisallowedFiles(stagedSet, ALLOWED_CHANGE_PATTERNS);
+    assert.deepStrictEqual(disallowed, [], 'Realistic Phase 07 staged set must have zero disallowed files');
+  });
+
+  test('TEST 9: staged set containing data/work-manifest.json and data/video.mp4 fails safety gate', () => {
+    const mixedSet = [
+      '.gitignore',
+      'data/work-manifest.json',
+      'data/video.mp4',
+    ];
+    const disallowed = checkDisallowedFiles(mixedSet, ALLOWED_CHANGE_PATTERNS);
+    assert.deepStrictEqual(disallowed, ['data/video.mp4'], 'Only data/video.mp4 must be flagged as disallowed');
   });
 });

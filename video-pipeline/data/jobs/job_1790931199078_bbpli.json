@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790931199078_bbpli",
+  "pipelineId": "pipe_1790931199097",
+  "createdAt": "2026-10-02T08:53:19.079Z",
+  "startedAt": "2026-10-02T08:53:19.079Z",
+  "completedAt": "2026-10-02T08:53:19.137Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790931199077_txpyx",
+      "filename": "vid_1790931199077_txpyx",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 39
+}

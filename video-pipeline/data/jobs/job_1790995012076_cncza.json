@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790995012076_cncza",
+  "pipelineId": "pipe_1790995012096",
+  "createdAt": "2026-10-03T02:36:52.076Z",
+  "startedAt": "2026-10-03T02:36:52.076Z",
+  "completedAt": "2026-10-03T02:36:52.155Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790995012063_c0ige",
+      "filename": "vid_1790995012063_c0ige",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 59
+}

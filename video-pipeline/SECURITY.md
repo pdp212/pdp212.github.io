@@ -1,62 +1,62 @@
-# Security Architecture & Secret Boundaries
+# Security Model & Threat Mitigation
 
-This document defines the security boundaries, credential policies, and safety mechanisms enforced by the **Video Pipeline**.
-
----
-
-## 1. Credential Invariants & Boundaries
-
-The Video Pipeline interacts with external infrastructure:
-- **Cloudflare R2 Storage** (S3-compatible API)
-- **GitHub Repository & Actions** (REST API)
-
-### Required Secrets
-| Variable Name | Purpose | Scope | Required In |
-|---|---|---|---|
-| `R2_ACCOUNT_ID` | Cloudflare Account Identifier | S3 endpoint URL resolution | Production runs |
-| `R2_ACCESS_KEY_ID` | R2 API Token ID | S3 authentication | Production runs |
-| `R2_SECRET_ACCESS_KEY` | R2 API Token Secret | S3 signature generation | Production runs |
-| `GITHUB_TOKEN` | GitHub Personal Access Token | Polling GitHub Actions runs | Production runs |
+**Project:** `github-portfolio/video-pipeline`  
+**Phase:** 11 — Delivery-Only Video Deployment Pipeline
 
 ---
 
-## 2. Strict Non-Exposure Rules
+## 1. Credentials & Secrets Management
 
-1. **Environment Only:** Secrets must be provided **exclusively** via OS environment variables (`process.env`).
-2. **Zero Storage in Configuration:** `config/pipeline.config.json` and all configuration files must have **zero** secret fields. A JSON schema validates that no secret properties exist.
-3. **No Hardcoded Fallbacks:** Default string fallbacks like `"dummy_key"` or empty token strings are strictly prohibited in the codebase.
-4. **Git Isolation:** `.env` and `.env.*` files are ignored in `.gitignore`. Only `.env.example` (containing empty dummy placeholders) may be tracked.
-5. **No Logs or UI Leaks:** Secrets are never rendered in terminal outputs, error messages, or UI elements.
+The Video Pipeline requires credentials to interact with Cloudflare R2 and GitHub:
 
----
+| Variable | Scope | Required Environment |
+| :--- | :--- | :--- |
+| `R2_ACCOUNT_ID` | Cloudflare Account Identifier | `process.env` |
+| `R2_ACCESS_KEY_ID` | R2 S3-Compatible Access Key ID | `process.env` |
+| `R2_SECRET_ACCESS_KEY` | R2 Secret Key (S3 SigV4 Signing) | `process.env` |
+| `GITHUB_TOKEN` | GitHub Personal Access Token (Workflow Polling) | `process.env` |
 
-## 3. Automated Secret Redaction Layer
-
-The pipeline includes a dedicated `SecretSanitizer` in `core/security/secret-sanitizer.ts`:
-- **Pattern Redaction:** Automatically scans and redacts GitHub Personal Access Tokens (`ghp_[a-zA-Z0-9]{36}` and `github_pat_*`).
-- **Dynamic In-Memory Redaction:** At startup, any non-empty values stored in `R2_SECRET_ACCESS_KEY`, `R2_ACCESS_KEY_ID`, and `R2_ACCOUNT_ID` are registered into an internal redactor.
-- **Log Hooking:** Every message passed to `PipelineLogger` is sanitized prior to writing to stdout, stderr, or log sinks.
-
-Example log output:
-```
-[10:55:00] [UPLOADING_R2] [START] ℹ Connecting using key [REDACTED_R2_ACCESS_KEY_ID]...
-```
+### Security Invariants
+* **Zero Disk Persistence of Secrets**: Secrets are NEVER saved to `pipeline.config.json`, `data/work-manifest.json`, `data/queue.json`, `data/jobs/*.json`, or build output.
+* **Environment-Only**: Credentials must be supplied via local `.env` or CI runtime environment variables.
+* **Strict `.gitignore` Enforcement**: The repository root `.gitignore` enforces exclusion of `.env`, `.env.*`, and temporary credential files.
 
 ---
 
-## 4. Git Safety & Branch Protection Policies
+## 2. Automated Secret Sanitization
 
-To prevent data loss or repository corruption:
-1. **Force Push Prohibited:** The Git Engine strictly disallows `--force` or `--force-with-lease`.
-2. **Branch Gate:** Pushes are only permitted to the designated release branch (`main`).
-3. **Staged Isolation:** Prior to commit, the pipeline verifies that only `data/work-manifest.json` is staged. If any unintended files (such as local `.mp4` binaries or code changes) are detected in the staging area, the pipeline immediately aborts.
+All output paths (logging sinks, SSE streams, API responses, error traces, and job audit records) pass through [`SecretSanitizer`](file:///Users/sss-phat/Documents/github-portfolio/video-pipeline/core/security/secret-sanitizer.ts).
+
+### Sanitization Patterns
+* Matches and redacts exact values of active environment credentials.
+* Matches standard GitHub PAT formats: `ghp_[a-zA-Z0-9]{20,}` $\rightarrow$ `[REDACTED_GITHUB_TOKEN]`.
+* Matches AWS/R2 Key ID patterns: `[A-Z0-9]{20}` $\rightarrow$ `[REDACTED_ACCESS_KEY]`.
+* Matches R2 Secret Hex strings: `[a-f0-9]{64}` $\rightarrow$ `[REDACTED_SECRET]`.
 
 ---
 
-## 5. Credential Rotation Playbook
+## 3. Filesystem Staging & Path Traversal Guards
 
-If a secret is ever suspected of compromise:
-1. Immediately revoke the token in the Cloudflare Dashboard (`Manage R2 API Tokens` → `Revoke`).
-2. In GitHub (`Settings` → `Developer Settings` → `Personal Access Tokens`), revoke the active PAT.
-3. Generate new credentials with minimal required scopes (`Object Read & Write` for R2; `repo`, `workflow` for GitHub).
-4. Update your local shell environment or CI secrets.
+1. **Upload Staging Isolation**:
+   - Browser uploads are staged strictly within `video-pipeline/temp/uploads/`.
+   - File names are sanitized to prevent directory traversal (e.g. `../../etc/passwd` $\rightarrow$ `passwd`).
+2. **Delivery-Only Source Preservation**:
+   - Input videos are read directly as the source artifact.
+   - Zero intermediate `.tmp/` or transcode directories are created during delivery.
+3. **Master Video Protection**:
+   - Original master source files are opened in read-only mode by FFprobe and stream uploaders. The pipeline never deletes, overwrites, or mutates master source files.
+
+---
+
+## 4. Git & Release Safety Guards
+
+* **Clean Working Tree**: Before initiating any Git operations, `GitSafetyEngine` asserts that no uncommitted or untracked changes exist outside of the authorized manifest update.
+* **Disallowed Force Push**: The pipeline strictly uses standard `git push origin main`. Commands with `--force` or `--force-with-lease` are structurally forbidden.
+* **Binary Exclusion**: Automated cleanup (`CleanGitStep`) ensures large video binaries are never committed to the portfolio Git repository.
+
+---
+
+## 5. Desktop & Renderer Isolation
+
+* **Electron Context Isolation**: Electron `BrowserWindow` runs with `contextIsolation: true` and `nodeIntegration: false`.
+* **CORS & HTTP Security**: The internal HTTP server binds strictly to `127.0.0.1` (localhost), preventing exposure to external networks.

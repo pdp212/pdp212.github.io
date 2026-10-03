@@ -69,6 +69,23 @@ export function dryRunGuard(
 // ---------------------------------------------------------------------------
 
 /**
+ * Filters a list of file paths against allowed regex patterns and returns all disallowed paths.
+ */
+export function checkDisallowedFiles(
+  filePaths: string[],
+  allowedPatterns: RegExp[]
+): string[] {
+  const disallowed: string[] = [];
+  for (const raw of filePaths) {
+    const filePath = raw.trim().replace(/^"/, '').replace(/"$/, '');
+    if (!filePath) continue;
+    const allowed = allowedPatterns.some((pat) => pat.test(filePath));
+    if (!allowed) disallowed.push(filePath);
+  }
+  return disallowed;
+}
+
+/**
  * Safety gate: asserts that every modified / staged file matches at least one
  * of the provided allow-list patterns.  Throws on the first disallowed path.
  * Should be called before any `git add` or `git commit`.
@@ -78,21 +95,17 @@ export async function assertOnlyAllowedChanges(
   allowedPatterns: RegExp[]
 ): Promise<void> {
   const { stdout } = await execAsync('git status --short', { cwd });
-  const disallowed: string[] = [];
+  const filePaths = stdout
+    .split('\n')
+    .filter((l) => l.trim().length > 0)
+    .map((line) => line.slice(2).trim());
 
-  for (const raw of stdout.split('\n')) {
-    const line = raw.trim();
-    if (!line) continue;
-    // Format: "XY path" – strip the two-char status prefix plus whitespace
-    const filePath = line.slice(2).trim().replace(/^"/, '').replace(/"$/, '');
-    const allowed = allowedPatterns.some((pat) => pat.test(filePath));
-    if (!allowed) disallowed.push(filePath);
-  }
+  const disallowed = checkDisallowedFiles(filePaths, allowedPatterns);
 
   if (disallowed.length > 0) {
     throw new Error(
       `Safety gate blocked: disallowed file(s) would be staged:\n  ${disallowed.join('\n  ')}\n` +
-        'Only .gitignore and video-pipeline/ changes are permitted in Phase 07.'
+        'Only .gitignore, video-pipeline/, and data/work-manifest.json changes are permitted in Phase 07.'
     );
   }
 }

@@ -12,10 +12,17 @@ import { PipelineUiServer } from '../ui/server.js';
 
 export function loadConfiguration(configPath?: string): PipelineConfig {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
-  const resolvedPath = configPath || path.resolve(currentDir, '../../config/pipeline.config.json');
+  const candidatePaths = [
+    configPath,
+    path.resolve(process.cwd(), 'config/pipeline.config.json'),
+    path.resolve(currentDir, '../../config/pipeline.config.json'),
+    path.resolve(currentDir, '../../../config/pipeline.config.json'),
+  ].filter((p): p is string => Boolean(p));
 
-  if (!fs.existsSync(resolvedPath)) {
-    throw new Error(`Pipeline configuration file not found at: ${resolvedPath}`);
+  const resolvedPath = candidatePaths.find((p) => fs.existsSync(p));
+
+  if (!resolvedPath || !fs.existsSync(resolvedPath)) {
+    throw new Error(`Pipeline configuration file not found. Checked: ${candidatePaths.join(', ')}`);
   }
 
   const raw = fs.readFileSync(resolvedPath, 'utf-8');
@@ -28,7 +35,7 @@ export async function bootstrap(args: string[]): Promise<void> {
   const videoArgs = args.filter((arg) => !arg.startsWith('--'));
 
   console.log('==================================================');
-  console.log('VIDEO PIPELINE — PHASE 02: INPUT & VIDEO QUEUE');
+  console.log('VIDEO PIPELINE — PHASE 08: COMPLETE UI');
   console.log('==================================================');
 
   const config = loadConfiguration();
@@ -80,3 +87,17 @@ export async function bootstrap(args: string[]): Promise<void> {
 }
 
 export default bootstrap;
+
+// Auto-bootstrap when executed as main CLI entrypoint
+const isMainModule =
+  process.argv[1] &&
+  (process.argv[1].endsWith('main/index.js') ||
+    process.argv[1].endsWith('main/index.ts') ||
+    process.argv[1] === fileURLToPath(import.meta.url));
+
+if (isMainModule) {
+  bootstrap(process.argv.slice(2)).catch((err) => {
+    console.error('Fatal bootstrap error:', err);
+    process.exit(1);
+  });
+}

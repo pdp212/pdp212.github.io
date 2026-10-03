@@ -5,6 +5,7 @@
  */
 
 import { R2Client } from './r2-client.js';
+import { getVideoContentType } from './uploader.js';
 
 export interface ObjectVerificationResult {
   key: string;
@@ -41,8 +42,9 @@ export class CloudflareR2Verifier implements R2Verifier {
   public async verifyObject(
     key: string,
     expectedSize?: number,
-    expectedContentType = 'video/mp4'
+    expectedContentType?: string
   ): Promise<ObjectVerificationResult> {
+    const targetContentType = expectedContentType || getVideoContentType(key);
     try {
       const head = await this.client.headObject(key);
 
@@ -57,8 +59,12 @@ export class CloudflareR2Verifier implements R2Verifier {
       }
 
       const remoteType = (head.contentType || '').toLowerCase();
-      const expectedType = expectedContentType.toLowerCase();
-      const contentTypeMatches = remoteType === expectedType || remoteType.includes('video/mp4');
+      const expectedType = targetContentType.toLowerCase();
+      const contentTypeMatches =
+        remoteType === expectedType ||
+        remoteType.startsWith('video/') ||
+        (expectedType.includes('mp4') && remoteType.includes('mp4')) ||
+        (expectedType.includes('quicktime') && (remoteType.includes('quicktime') || remoteType.includes('mp4')));
 
       if (!contentTypeMatches) {
         return {
@@ -69,7 +75,7 @@ export class CloudflareR2Verifier implements R2Verifier {
           etag: head.etag,
           matchesLocalSize: false,
           passed: false,
-          error: `Content-Type mismatch for '${key}': Remote is '${head.contentType || 'none'}', expected '${expectedContentType}'.`,
+          error: `Content-Type mismatch for '${key}': Remote is '${head.contentType || 'none'}', expected '${targetContentType}'.`,
         };
       }
 
