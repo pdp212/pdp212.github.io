@@ -29,6 +29,7 @@ export const ALLOWED_CHANGE_PATTERNS: RegExp[] = [
   /^\.gitignore$/,
   /^video-pipeline\//,
   /^data\/work-manifest\.json$/,
+  /^data\/work-data\.js$/,
 ];
 
 /** Commit message mandated by promt 07. */
