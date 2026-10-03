@@ -14,10 +14,12 @@
 import path from 'node:path';
 import type { PipelineStep, StepResult } from './step-interface.js';
 import type { PipelineContext } from '../context.js';
+import { SecretSanitizer } from '../../core/security/secret-sanitizer.js';
 import {
   dryRunGuard,
   execAsync,
-  assertOnlyAllowedChanges,
+  getStagingCandidates,
+  assertOnlyAllowedStagedChanges,
   getCurrentBranch,
   getTrackedVideoFiles,
 } from './_utils.js';
@@ -56,7 +58,7 @@ export class CommitStep implements PipelineStep {
       context.logger.info(this.stage, 'BRANCH_OK', `On branch '${branch}'.`);
 
       // 3. Zero production videos tracked in Git index
-      const trackedVideos = await getTrackedVideoFiles(portfolioRoot, /assets\/videos\/projects\/|\.(mp4|mov|mkv|avi|webm)$/i);
+      const trackedVideos = await getTrackedVideoFiles(portfolioRoot, /assets\/videos\/projects\/|\.(mp4|mov|mkv|avi|webm|mxf)$/i);
       if (trackedVideos.length > 0) {
         throw new Error(
           `Commit blocked: production video(s) still tracked by Git:\n  ${trackedVideos.join('\n  ')}`
@@ -64,29 +66,31 @@ export class CommitStep implements PipelineStep {
       }
       context.logger.info(this.stage, 'NO_TRACKED_VIDEOS', 'Zero production videos in Git index.');
 
-      // 4. Assert only allowed files are modified/untracked
-      await assertOnlyAllowedChanges(portfolioRoot, ALLOWED_CHANGE_PATTERNS);
-      context.logger.info(this.stage, 'STAGED_FILES_OK', 'Only permitted files are modified.');
+      // 4. Discover candidate staging files based on allow-list
+      const candidates = await getStagingCandidates(portfolioRoot, ALLOWED_CHANGE_PATTERNS);
 
-      // 5. Inspect diff before staging
-      const { stdout: unstagedDiff } = await execAsync('git diff', { cwd: portfolioRoot });
-      if (unstagedDiff.includes('.env') || unstagedDiff.includes('R2_SECRET_ACCESS_KEY')) {
-        throw new Error('Commit blocked: sensitive credentials detected in git diff.');
+      // 5. Stage only allowed explicit candidate files
+      if (candidates.length > 0) {
+        const stageArgs = candidates.map((c) => `"${c}"`).join(' ');
+        await execAsync(`git add -- ${stageArgs}`, { cwd: portfolioRoot });
+        context.logger.info(
+          this.stage,
+          'STAGED',
+          `Staged ${candidates.length} permitted file(s):\n  ${candidates.join('\n  ')}`
+        );
       }
 
-      // 6. Stage only allowed paths
-      const manifestRelPath = context.config.manifest?.relativeFilePath || 'data/work-manifest.json';
-      await execAsync(`git add .gitignore video-pipeline "${manifestRelPath}"`, { cwd: portfolioRoot });
-      context.logger.info(
-        this.stage,
-        'STAGED',
-        `Staged .gitignore, video-pipeline/, and ${manifestRelPath}.`
-      );
+      // 6. Assert that all staged changes strictly conform to allow-list
+      await assertOnlyAllowedStagedChanges(portfolioRoot, ALLOWED_CHANGE_PATTERNS);
+      context.logger.info(this.stage, 'STAGED_FILES_OK', 'Only permitted files are staged.');
 
-      // 7. Inspect staged diff
+      // 7. Inspect staged diff for credentials and secret leaks
       const { stdout: stagedDiff } = await execAsync('git diff --cached', { cwd: portfolioRoot });
-      if (stagedDiff.includes('.env') || stagedDiff.includes('R2_SECRET_ACCESS_KEY')) {
-        throw new Error('Commit blocked: sensitive credentials detected in staged diff.');
+      const secretViolations = SecretSanitizer.scanDiffForSecrets(stagedDiff);
+      if (secretViolations.length > 0) {
+        throw new Error(
+          `Commit blocked: sensitive credentials detected in staged diff:\n  ${secretViolations.join('\n  ')}`
+        );
       }
 
       // 8. Idempotency Check: Are there changes staged to commit?

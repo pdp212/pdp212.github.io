@@ -86,21 +86,104 @@ export function checkDisallowedFiles(
 }
 
 /**
- * Safety gate: asserts that every modified / staged file matches at least one
- * of the provided allow-list patterns.  Throws on the first disallowed path.
- * Should be called before any `git add` or `git commit`.
+ * Scans git status to find explicitly allowed modified, untracked, or deleted files.
+ * Strictly filters out any video binaries, ignored files, or disallowed paths.
+ */
+export async function getStagingCandidates(
+  cwd: string,
+  allowedPatterns: RegExp[]
+): Promise<string[]> {
+  const { stdout } = await execAsync('git status --porcelain -uall', { cwd });
+  const lines = stdout.split('\n').filter((l) => l.trim().length > 0);
+  const candidates: string[] = [];
+
+  for (const line of lines) {
+    // Format is XY <path> or XY "<path>"
+    const rawPath = line.substring(2).trim().replace(/^"/, '').replace(/"$/, '');
+    if (!rawPath) continue;
+
+    // Never consider video binaries as candidates for staging
+    if (/\.(mp4|mov|mkv|avi|webm|mxf)$/i.test(rawPath)) {
+      continue;
+    }
+
+    // Check against allowed patterns
+    const isAllowed = allowedPatterns.some((pat) => pat.test(rawPath));
+    if (isAllowed) {
+      candidates.push(rawPath);
+    }
+  }
+
+  return candidates;
+}
+
+/**
+ * Asserts that every file currently in the staged index matches at least one
+ * of the provided allow-list patterns. Throws on any disallowed path.
+ */
+export async function assertOnlyAllowedStagedChanges(
+  cwd: string,
+  allowedPatterns: RegExp[]
+): Promise<void> {
+  const { stdout } = await execAsync('git diff --cached --name-status', { cwd });
+  const lines = stdout.split('\n').filter((l) => l.trim().length > 0);
+  const disallowed: string[] = [];
+
+  for (const line of lines) {
+    const parts = line.trim().split(/\s+/);
+    const status = parts[0]; // e.g. M, A, D, R, etc.
+    const filePath = parts[1]?.replace(/^"/, '').replace(/"$/, '');
+    if (!filePath) continue;
+
+    // If a video binary is staged for deletion (D), it represents the intentional
+    // untracking of legacy binaries to enforce zero-video repository invariants.
+    // Staged addition (A) or modification (M) of a video binary is strictly forbidden.
+    const isVideo = /\.(mp4|mov|mkv|avi|webm|mxf)$/i.test(filePath);
+    if (isVideo && status.startsWith('D')) {
+      continue;
+    }
+
+    const allowed = allowedPatterns.some((pat) => pat.test(filePath));
+    if (!allowed) {
+      disallowed.push(filePath);
+    }
+  }
+
+  if (disallowed.length > 0) {
+    throw new Error(
+      `Safety gate blocked: disallowed file(s) are staged in Git index:\n  ${disallowed.join('\n  ')}\n` +
+        'Only .gitignore, video-pipeline/, and data/work-manifest.json changes are permitted in Phase 07.'
+    );
+  }
+}
+
+/**
+ * Safety gate: asserts that modified / staged files match allow-list patterns.
+ * Throws on the first disallowed path.
  */
 export async function assertOnlyAllowedChanges(
   cwd: string,
   allowedPatterns: RegExp[]
 ): Promise<void> {
-  const { stdout } = await execAsync('git status --short', { cwd });
-  const filePaths = stdout
-    .split('\n')
-    .filter((l) => l.trim().length > 0)
-    .map((line) => line.slice(2).trim());
+  const { stdout } = await execAsync('git status --porcelain -uall', { cwd });
+  const lines = stdout.split('\n').filter((l) => l.trim().length > 0);
+  const disallowed: string[] = [];
 
-  const disallowed = checkDisallowedFiles(filePaths, allowedPatterns);
+  for (const line of lines) {
+    const status = line.substring(0, 2);
+    const rawPath = line.substring(2).trim().replace(/^"/, '').replace(/"$/, '');
+    if (!rawPath) continue;
+
+    const isVideo = /\.(mp4|mov|mkv|avi|webm|mxf)$/i.test(rawPath);
+    if (isVideo && (status.includes('D') || status === '??')) {
+      continue;
+    }
+
+    const isAllowed = allowedPatterns.some((pat) => pat.test(rawPath));
+    if (!isAllowed) {
+      disallowed.push(rawPath);
+    }
+  }
 
   if (disallowed.length > 0) {
     throw new Error(

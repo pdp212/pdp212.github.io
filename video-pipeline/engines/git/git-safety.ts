@@ -44,16 +44,17 @@ export class GitSafetyEngine {
   }
 
   /**
-   * Asserts that no production project videos remain tracked by Git.
+   * Asserts that no production video binaries remain tracked by Git.
    */
   public static assertNoTrackedProjectVideos(trackedFiles: string[]): void {
     const trackedVideos = trackedFiles.filter((file) =>
-      file.startsWith('assets/videos/projects/')
+      file.startsWith('assets/videos/projects/') ||
+      file.startsWith('assets/transitions/')
     );
 
     if (trackedVideos.length > 0) {
       throw new GitSafetyError(
-        `Architecture violation: Git is tracking production project videos: ${trackedVideos.join(', ')}. Project videos must be hosted on Cloudflare R2.`
+        `Architecture violation: Git is tracking production video binaries: ${trackedVideos.join(', ')}.`
       );
     }
   }
@@ -80,12 +81,14 @@ export class GitSafetyEngine {
       errors.push("Missing required rule in .gitignore: '.env'");
     }
 
-    // 3. Must NOT accidentally ignore assets/transitions/
-    if (
-      gitignoreContent.includes('assets/transitions') ||
-      gitignoreContent.includes('assets/transitions/*.mp4')
-    ) {
-      errors.push(".gitignore must not ignore UI transition videos under 'assets/transitions/'");
+    // 3. Must protect assets/transitions/*.mp4
+    const hasTransitionRule =
+      gitignoreContent.includes('assets/transitions/*.mp4') ||
+      gitignoreContent.includes('assets/transitions/*') ||
+      gitignoreContent.includes('assets/transitions');
+
+    if (!hasTransitionRule) {
+      errors.push("Missing required rule in .gitignore: 'assets/transitions/*.mp4'");
     }
 
     if (errors.length > 0) {

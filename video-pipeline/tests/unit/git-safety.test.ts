@@ -49,13 +49,13 @@ describe('GitSafetyEngine Unit Tests', () => {
     );
   });
 
-  it('assertNoTrackedProjectVideos rejects project videos while allowing UI transition videos', () => {
-    // Allows UI transitions
+  it('assertNoTrackedProjectVideos rejects project and transition video binaries from Git tracking', () => {
+    // Allows clean files
     assert.doesNotThrow(() => {
       GitSafetyEngine.assertNoTrackedProjectVideos([
         'index.html',
-        'assets/transitions/intro.mp4',
-        'assets/transitions/home-to-work.mp4',
+        'src/app.js',
+        'style.css',
       ]);
     });
 
@@ -64,44 +64,52 @@ describe('GitSafetyEngine Unit Tests', () => {
       () => GitSafetyEngine.assertNoTrackedProjectVideos([
         'assets/videos/projects/WED_PHUNGTUONG.mp4',
       ]),
-      (err: any) => err instanceof GitSafetyError && err.message.includes('tracking production project videos')
+      (err: any) => err instanceof GitSafetyError && err.message.includes('tracking production video binaries')
+    );
+
+    // Rejects transition videos
+    assert.throws(
+      () => GitSafetyEngine.assertNoTrackedProjectVideos([
+        'assets/transitions/intro.mp4',
+      ]),
+      (err: any) => err instanceof GitSafetyError && err.message.includes('tracking production video binaries')
     );
   });
 
-  it('assertGitignoreRules validates required rules for project videos, secrets, and transition preservation', () => {
+  it('assertGitignoreRules validates required rules for project videos, secrets, and transition video isolation', () => {
     const validGitignore = [
       '# Secrets',
       '.env',
       '.env.*',
       '# Project Videos',
       'assets/videos/projects/*.mp4',
+      'assets/transitions/*.mp4',
     ].join('\n');
 
     const result = GitSafetyEngine.assertGitignoreRules(validGitignore);
     assert.equal(result.valid, true);
 
     // Missing project video rule
-    const missingVideoRule = '.env\nnode_modules/\n';
+    const missingVideoRule = '.env\nnode_modules/\nassets/transitions/*.mp4';
     assert.throws(
       () => GitSafetyEngine.assertGitignoreRules(missingVideoRule),
       (err: any) => err instanceof GitSafetyError && err.message.includes('assets/videos/projects/*.mp4')
     );
 
     // Missing .env rule
-    const missingEnvRule = 'assets/videos/projects/*.mp4\nnode_modules/\n';
+    const missingEnvRule = 'assets/videos/projects/*.mp4\nassets/transitions/*.mp4\nnode_modules/\n';
     assert.throws(
       () => GitSafetyEngine.assertGitignoreRules(missingEnvRule),
       (err: any) => err instanceof GitSafetyError && err.message.includes('.env')
     );
 
-    // Improperly ignoring transition videos
-    const badTransitionRule = [
+    // Missing transition rule
+    const missingTransitionRule = [
       '.env',
       'assets/videos/projects/*.mp4',
-      'assets/transitions/*.mp4',
     ].join('\n');
     assert.throws(
-      () => GitSafetyEngine.assertGitignoreRules(badTransitionRule),
+      () => GitSafetyEngine.assertGitignoreRules(missingTransitionRule),
       (err: any) => err instanceof GitSafetyError && err.message.includes('assets/transitions')
     );
   });

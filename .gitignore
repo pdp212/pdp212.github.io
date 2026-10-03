@@ -30,3 +30,4 @@ info/
 
 # Production & test project videos (Do NOT commit to Git)
 assets/videos/projects/*.mp4
+assets/transitions/*.mp4

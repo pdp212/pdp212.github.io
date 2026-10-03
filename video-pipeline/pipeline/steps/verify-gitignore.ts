@@ -42,23 +42,13 @@ export class VerifyGitignoreStep implements PipelineStep {
       // Asserts zero secrets tracked (.env)
       GitSafetyEngine.assertNoTrackedSecrets(trackedFiles);
 
-      // Asserts zero project videos tracked (assets/videos/projects/*.mp4)
+      // Asserts zero production video binaries tracked (assets/videos/projects/*.mp4 & assets/transitions/*.mp4)
       GitSafetyEngine.assertNoTrackedProjectVideos(trackedFiles);
-
-      // Asserts UI transition videos remain tracked if expected
-      const hasTransitions = trackedFiles.some((f) => f.startsWith('assets/transitions/'));
-      if (!hasTransitions) {
-        context.logger.warn(
-          this.stage,
-          'TRANSITION_WARNING',
-          'No assets/transitions/ video files found in Git index.'
-        );
-      }
 
       context.logger.info(
         this.stage,
         'SAFETY_VERIFIED',
-        'Git safety verified: .gitignore active, 0 project videos tracked, 0 secrets tracked.',
+        'Git safety verified: .gitignore active, 0 video binaries tracked, 0 secrets tracked.',
         'SUCCESS'
       );
 

@@ -149,4 +149,147 @@ export class SecretSanitizer {
       return obj;
     }
   }
+
+  /**
+   * Scans a git diff text for actual secrets (API keys, tokens, runtime environment secrets).
+   * Distinguishes regex detection patterns, comments, and synthetic test fixtures from real credential leaks.
+   * Returns an array of detected violations or an empty array if clean.
+   */
+  public static scanDiffForSecrets(diffText: string): string[] {
+    if (!diffText) return [];
+    const violations: string[] = [];
+    const diffBlocks = diffText.split(/^diff --git /m);
+
+    for (const block of diffBlocks) {
+      if (!block.trim()) continue;
+      const lines = block.split('\n');
+      const header = lines[0] || '';
+      // Extract target file path (b/path/to/file)
+      const targetPath = header.split(' ')[1]?.replace(/^b\//, '') || header;
+      const isTestOrDoc =
+        targetPath.includes('/tests/') ||
+        targetPath.includes('.test.') ||
+        targetPath.includes('.spec.') ||
+        targetPath.endsWith('.md');
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.startsWith('+') || line.startsWith('+++')) continue;
+        const lineContent = line.substring(1);
+        const trimmed = lineContent.trim();
+
+        // 1. Comments and documentation lines are safe
+        if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*') || trimmed.startsWith('#')) {
+          continue;
+        }
+
+        // 2. Critical Check: Check for active runtime secret values in added lines (always enforced for all files)
+        for (const envKey of this.KNOWN_SECRET_ENV_KEYS) {
+          const secretVal = process.env[envKey]?.trim();
+          if (secretVal && secretVal.length >= 8) {
+            // Ignore common test/placeholder environment values
+            if (
+              !secretVal.includes('placeholder') &&
+              !secretVal.includes('super_secret') &&
+              !secretVal.includes('test_') &&
+              lineContent.includes(secretVal)
+            ) {
+              violations.push(
+                `[${targetPath}] Runtime secret value for ${envKey} detected in staged diff addition.`
+              );
+              break;
+            }
+          }
+        }
+
+        // 3. Private Key Block Detection
+        if (/-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/.test(lineContent)) {
+          violations.push(`[${targetPath}] Private Key Block detected in staged diff.`);
+          continue;
+        }
+
+        // 4. Hardcoded R2/AWS Secret Assignment (e.g. R2_SECRET_ACCESS_KEY = "actual_secret")
+        const r2AssignMatch = lineContent.match(
+          /\b(?:r2SecretAccessKey|R2_SECRET_ACCESS_KEY)\s*[:=]\s*["']([a-zA-Z0-9/+=_\-]{16,})["']/i
+        );
+        if (r2AssignMatch) {
+          const val = r2AssignMatch[1];
+          const isRegexOrPattern =
+            lineContent.includes('pattern:') ||
+            lineContent.includes('SECRET_PATTERNS') ||
+            lineContent.includes('[a-zA-Z') ||
+            lineContent.includes('process.env.');
+          const isSynthetic =
+            isTestOrDoc &&
+            (val.includes('test_') || val.includes('mock_') || val.includes('synthetic_') || val.includes('placeholder'));
+
+          if (!isRegexOrPattern && !isSynthetic) {
+            violations.push(`[${targetPath}] Hardcoded R2 Secret Assignment pattern detected in staged diff.`);
+          }
+        }
+
+        // 5. GitHub Personal Access Token Detection
+        // Match actual token values: ghp_ (>=20 alphanumeric) or github_pat_ (>=30 base62/underscore)
+        const ghpMatches = lineContent.matchAll(
+          /\b(ghp_[a-zA-Z0-9]{20,}|github_pat_[a-zA-Z0-9_]{30,})\b/g
+        );
+        for (const m of ghpMatches) {
+          const candidate = m[1];
+          // If the line defines a regex rule or contains regex quantifiers/classes, it's a detection rule
+          const isRegexDef =
+            lineContent.includes('[a-zA-Z0-9') ||
+            lineContent.includes('{20,') ||
+            lineContent.includes('{30,') ||
+            lineContent.includes('pattern:') ||
+            lineContent.includes('SECRET_PATTERNS') ||
+            lineContent.includes('.replace(/') ||
+            lineContent.includes('new RegExp');
+
+          // If in test/doc and marked as synthetic or placeholder
+          const isSynthetic =
+            isTestOrDoc &&
+            (candidate.includes('test_') ||
+              candidate.includes('mock_') ||
+              candidate.includes('synthetic_') ||
+              candidate.includes('EXAMPLE') ||
+              candidate.includes('placeholder') ||
+              /ghp_[A-Z0-9]{20,}/.test(candidate) ||
+              /ghp_[0-9]{20,}/.test(candidate));
+
+          if (!isRegexDef && !isSynthetic) {
+            violations.push(`[${targetPath}] GitHub Personal Access Token pattern detected in staged diff.`);
+            break;
+          }
+        }
+
+        // 6. AWS Access Key ID Detection (AKIA / ASIA + 16 uppercase alphanumeric chars)
+        const awsMatches = lineContent.matchAll(/\b((?:AKIA|ASIA)[0-9A-Z]{16})\b/g);
+        for (const m of awsMatches) {
+          const candidate = m[1];
+          const isRegexDef =
+            lineContent.includes('[0-9A-Z]') ||
+            lineContent.includes('{16}') ||
+            lineContent.includes('pattern:') ||
+            lineContent.includes('SECRET_PATTERNS') ||
+            lineContent.includes('.replace(/') ||
+            lineContent.includes('new RegExp');
+
+          const isSynthetic =
+            isTestOrDoc &&
+            (candidate.includes('EXAMPLE') ||
+              candidate.includes('MOCK') ||
+              candidate.includes('TEST') ||
+              candidate.includes('SYNTHETIC'));
+
+          if (!isRegexDef && !isSynthetic) {
+            violations.push(`[${targetPath}] AWS Access Key ID pattern detected in staged diff.`);
+            break;
+          }
+        }
+      }
+    }
+
+    return violations;
+  }
 }
+

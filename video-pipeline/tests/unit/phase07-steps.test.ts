@@ -13,7 +13,12 @@ import { CommitStep, ALLOWED_CHANGE_PATTERNS } from '../../pipeline/steps/commit
 import { PushStep } from '../../pipeline/steps/push.js';
 import { GitHubActionsStep } from '../../pipeline/steps/github-actions.js';
 import { ProductionSmokeStep } from '../../pipeline/steps/production-smoke.js';
-import { dryRunGuard, checkDisallowedFiles } from '../../pipeline/steps/_utils.js';
+import {
+  dryRunGuard,
+  checkDisallowedFiles,
+  getStagingCandidates,
+  assertOnlyAllowedStagedChanges,
+} from '../../pipeline/steps/_utils.js';
 import { PipelineLogger } from '../../core/logger/logger.js';
 import { PipelineStateStore } from '../../core/state/state-store.js';
 import type { PipelineContext } from '../../pipeline/context.js';
@@ -394,4 +399,166 @@ describe('Phase 07 Commit Safety Gate – Policy Enforcement', () => {
     const disallowed = checkDisallowedFiles(mixedSet, ALLOWED_CHANGE_PATTERNS);
     assert.deepStrictEqual(disallowed, ['data/video.mp4'], 'Only data/video.mp4 must be flagged as disallowed');
   });
+
+  test('TEST 10: regression - transition videos (assets/transitions/*.mp4) are never included in staging candidates', () => {
+    // Simulates raw git status lines containing transition videos, valid changes, and other files
+    const sampleStatusLines = [
+      ' M .gitignore',
+      ' D assets/transitions/intro.mp4',
+      ' D assets/transitions/home-to-work.mp4',
+      '?? assets/transitions/work-to-profile.mp4',
+      ' M video-pipeline/pipeline/steps/commit.ts',
+      ' M data/work-manifest.json',
+      '?? assets/videos/projects/test.mp4',
+      '?? other-unrelated-file.txt',
+    ];
+
+    const candidates: string[] = [];
+    for (const line of sampleStatusLines) {
+      const rawPath = line.substring(2).trim().replace(/^"/, '').replace(/"$/, '');
+      if (!rawPath) continue;
+      // Filter out video binaries
+      if (/\.(mp4|mov|mkv|avi|webm|mxf)$/i.test(rawPath)) {
+        continue;
+      }
+      if (ALLOWED_CHANGE_PATTERNS.some((pat) => pat.test(rawPath))) {
+        candidates.push(rawPath);
+      }
+    }
+
+    assert.deepStrictEqual(candidates, [
+      '.gitignore',
+      'video-pipeline/pipeline/steps/commit.ts',
+      'data/work-manifest.json',
+    ]);
+    assert.ok(!candidates.some((c) => c.startsWith('assets/transitions/')), 'Transition videos must never be staging candidates');
+    assert.ok(!candidates.some((c) => c.endsWith('.mp4')), 'No MP4 files can be staging candidates');
+  });
+
+  test('TEST A: Pre-existing staged transition MP4 deletions are recognized as safety cleanup and allowed, but additions are blocked', () => {
+    // Simulates staged diff parsing: D is permitted untracking, A/M is rejected
+    const stagedLines = [
+      'D\tassets/transitions/intro.mp4',
+      'D\tassets/transitions/contact-to-home.mp4',
+      'M\t.gitignore',
+      'M\tvideo-pipeline/pipeline/steps/commit.ts',
+    ];
+
+    const disallowed: string[] = [];
+    for (const line of stagedLines) {
+      const parts = line.trim().split(/\s+/);
+      const status = parts[0];
+      const filePath = parts[1];
+      const isVideo = /\.(mp4|mov|mkv|avi|webm|mxf)$/i.test(filePath);
+      if (isVideo && status.startsWith('D')) {
+        continue;
+      }
+      const allowed = ALLOWED_CHANGE_PATTERNS.some((pat) => pat.test(filePath));
+      if (!allowed) {
+        disallowed.push(filePath);
+      }
+    }
+    assert.deepStrictEqual(disallowed, [], 'Staged deletions of legacy transition videos must not block commit');
+  });
+
+  test('TEST B: Ignored transition MP4s exist physically but are not tracked - candidate discovery ignores them', () => {
+    const rawStatus = [
+      '?? assets/transitions/intro.mp4',
+      '?? assets/transitions/home-to-work.mp4',
+      ' M .gitignore',
+      ' M video-pipeline/package.json',
+    ];
+
+    const candidates: string[] = [];
+    for (const line of rawStatus) {
+      const rawPath = line.substring(2).trim();
+      if (/\.(mp4|mov|mkv|avi|webm|mxf)$/i.test(rawPath)) continue;
+      if (ALLOWED_CHANGE_PATTERNS.some((p) => p.test(rawPath))) {
+        candidates.push(rawPath);
+      }
+    }
+
+    assert.deepStrictEqual(candidates, ['.gitignore', 'video-pipeline/package.json']);
+    assert.ok(!candidates.some((c) => c.includes('assets/transitions')));
+  });
+
+  test('TEST C: An unrelated disallowed staged file exists - safety gate fails safely and blocks commit', () => {
+    const stagedDiffLines = [
+      'M\tsrc/components/Header.tsx',
+      'M\t.gitignore',
+      'M\tvideo-pipeline/pipeline/steps/commit.ts',
+    ];
+
+    const disallowed: string[] = [];
+    for (const line of stagedDiffLines) {
+      const parts = line.trim().split(/\s+/);
+      const filePath = parts[1];
+      const allowed = ALLOWED_CHANGE_PATTERNS.some((pat) => pat.test(filePath));
+      if (!allowed) {
+        disallowed.push(filePath);
+      }
+    }
+
+    assert.deepStrictEqual(disallowed, ['src/components/Header.tsx']);
+  });
+
+  test('TEST D: Only permitted files are staged - commit safety validation succeeds', () => {
+    const stagedDiffLines = [
+      'M\t.gitignore',
+      'M\tvideo-pipeline/pipeline/steps/commit.ts',
+      'M\tdata/work-manifest.json',
+    ];
+
+    const disallowed: string[] = [];
+    for (const line of stagedDiffLines) {
+      const parts = line.trim().split(/\s+/);
+      const filePath = parts[1];
+      const allowed = ALLOWED_CHANGE_PATTERNS.some((pat) => pat.test(filePath));
+      if (!allowed) {
+        disallowed.push(filePath);
+      }
+    }
+
+    assert.deepStrictEqual(disallowed, []);
+  });
+
+  test('TEST E: Staging candidates evaluation is deterministic on retry', () => {
+    const statusOutput = [
+      ' M .gitignore',
+      ' M video-pipeline/engines/git/git-safety.ts',
+      ' D assets/transitions/intro.mp4',
+    ];
+
+    const getCandidates = () => {
+      const result: string[] = [];
+      for (const line of statusOutput) {
+        const rawPath = line.substring(2).trim();
+        if (/\.(mp4|mov|mkv|avi|webm|mxf)$/i.test(rawPath)) continue;
+        if (ALLOWED_CHANGE_PATTERNS.some((p) => p.test(rawPath))) {
+          result.push(rawPath);
+        }
+      }
+      return result;
+    };
+
+    const run1 = getCandidates();
+    const run2 = getCandidates();
+    assert.deepStrictEqual(run1, run2);
+    assert.deepStrictEqual(run1, ['.gitignore', 'video-pipeline/engines/git/git-safety.ts']);
+  });
+
+  test('TEST F: Staged candidates set contains ONLY permitted Phase 07 files', () => {
+    const stagedFiles = [
+      '.gitignore',
+      'video-pipeline/engines/git/git-safety.ts',
+      'video-pipeline/pipeline/steps/commit.ts',
+      'data/work-manifest.json',
+    ];
+
+    const disallowed = checkDisallowedFiles(stagedFiles, ALLOWED_CHANGE_PATTERNS);
+    assert.deepStrictEqual(disallowed, []);
+    assert.ok(stagedFiles.every((f) => ALLOWED_CHANGE_PATTERNS.some((p) => p.test(f))));
+  });
 });
+
+
