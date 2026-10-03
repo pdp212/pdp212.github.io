@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790996141044_we8ap",
+  "pipelineId": "pipe_1790996141055",
+  "createdAt": "2026-10-03T02:55:41.044Z",
+  "startedAt": "2026-10-03T02:55:41.044Z",
+  "completedAt": "2026-10-03T02:55:41.110Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790996141035_8z2zi",
+      "filename": "vid_1790996141035_8z2zi",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 54
+}

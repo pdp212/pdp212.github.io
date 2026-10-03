@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790996270171_xxefi",
+  "pipelineId": "pipe_1790996270186",
+  "createdAt": "2026-10-03T02:57:50.171Z",
+  "startedAt": "2026-10-03T02:57:50.171Z",
+  "completedAt": "2026-10-03T02:57:50.253Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790996270159_jngda",
+      "filename": "vid_1790996270159_jngda",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 66
+}

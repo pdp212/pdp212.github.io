@@ -3,12 +3,12 @@
   "pipelineId": "pipe_1790995689323",
   "createdAt": "2026-10-03T02:48:09.322Z",
   "startedAt": "2026-10-03T02:48:09.322Z",
-  "completedAt": null,
-  "status": "RUNNING",
-  "currentStage": "IDLE",
+  "completedAt": "2026-10-03T02:49:46.278Z",
+  "status": "FAILED",
+  "currentStage": "FAILED",
   "inputCount": 1,
   "completedCount": 0,
-  "failedCount": 0,
+  "failedCount": 1,
   "items": [
     {
       "id": "vid_1790994596057_o8oek",
@@ -17,6 +17,6 @@
     }
   ],
   "isDryRun": false,
-  "error": null,
-  "durationMs": null
+  "error": "No GitHub Actions run found for commit b4074e4cef82535debb13de6745d0e6a4c67eb87 in pdp212/pdp212.github.io. Ensure the push triggered a workflow and GITHUB_TOKEN or gh CLI is configured.",
+  "durationMs": 29311
 }

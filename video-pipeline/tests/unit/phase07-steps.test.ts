@@ -161,6 +161,107 @@ describe('GitHubActionsStep – dry-run', () => {
   test('exposes the correct stage name', () => {
     assert.strictEqual(new GitHubActionsStep().stage, 'WAITING_FOR_GITHUB_ACTIONS');
   });
+
+  test('resolves run and monitors completion via mocked REST API', async () => {
+    const step = new GitHubActionsStep();
+    const ctx = makeContext(false);
+    ctx.gitCommitSha = 'mock_sha_12345';
+    ctx.config.timeout = { githubActionsMs: 10_000 } as any;
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (url: any) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/actions/runs?')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            workflow_runs: [
+              {
+                id: 998877,
+                head_sha: 'mock_sha_12345',
+                name: 'Deploy',
+                created_at: '2026-10-03T01:00:00Z',
+              },
+            ],
+          }),
+        } as any;
+      }
+      if (urlStr.includes('/actions/runs/998877')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 998877,
+            status: 'completed',
+            conclusion: 'success',
+            head_sha: 'mock_sha_12345',
+            name: 'Deploy',
+          }),
+        } as any;
+      }
+      return originalFetch(url);
+    };
+
+    try {
+      const result = await step.execute(ctx);
+      assert.strictEqual(result.success, true);
+      assert.ok(result.message.includes('998877'));
+      assert.ok(result.message.includes('completed successfully'));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('fails gracefully when GitHub Actions run ends with failure', async () => {
+    const step = new GitHubActionsStep();
+    const ctx = makeContext(false);
+    ctx.gitCommitSha = 'fail_sha_99999';
+    ctx.config.timeout = { githubActionsMs: 10_000 } as any;
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (url: any) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/actions/runs?')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            workflow_runs: [
+              {
+                id: 112233,
+                head_sha: 'fail_sha_99999',
+                name: 'Deploy',
+                created_at: '2026-10-03T01:00:00Z',
+              },
+            ],
+          }),
+        } as any;
+      }
+      if (urlStr.includes('/actions/runs/112233')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 112233,
+            status: 'completed',
+            conclusion: 'failure',
+            head_sha: 'fail_sha_99999',
+            name: 'Deploy',
+          }),
+        } as any;
+      }
+      return originalFetch(url);
+    };
+
+    try {
+      const result = await step.execute(ctx);
+      assert.strictEqual(result.success, false);
+      assert.ok(result.message.includes("conclusion: 'failure'"));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

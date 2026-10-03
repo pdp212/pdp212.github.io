@@ -1,16 +1,18 @@
 /**
  * Step 12: GitHub Actions Deployment Monitor
  *
- * Phase 07 – waits for the GitHub Pages deployment triggered by the push to
+ * Waits for the GitHub Pages deployment triggered by the push to
  * complete successfully before allowing the pipeline to advance to the
  * production smoke test.
  *
  * Strategy (in order of availability):
- *   1. GitHub CLI (`gh`) – preferred when present, avoids manual token handling.
- *   2. GitHub REST API – fallback using GITHUB_TOKEN env variable.
+ *   1. GitHub REST API – primary, deterministic, zero external binary dependency.
+ *   2. GitHub CLI (`gh`) – optional fallback adapter when present.
  *
- * Timeout: context.config.timeout.githubActionsMs (default: 5 min = 300 000 ms).
- * Poll interval: 8 seconds.
+ * Timeouts:
+ *   - Discovery timeout: 60s (polls every 5s until run is registered).
+ *   - Execution timeout: context.config.timeout.githubActionsMs (default: 15 min = 900 000 ms).
+ *   - Poll interval: 8s.
  *
  * Prohibited: no history modifications, no re-push, no force operations.
  */
@@ -19,106 +21,304 @@ import path from 'node:path';
 import type { PipelineStep, StepResult } from './step-interface.js';
 import type { PipelineContext } from '../context.js';
 import { dryRunGuard, execAsync } from './_utils.js';
+import { GitHubActionsError, PipelineCancelledError } from '../../core/errors/pipeline-errors.js';
 
 const POLL_INTERVAL_MS = 8_000;
+const DISCOVERY_INTERVAL_MS = 5_000;
+const DEFAULT_DISCOVERY_TIMEOUT_MS = 60_000;
 
-interface WorkflowRun {
+export interface WorkflowRunInfo {
   id: number;
+  name: string;
+  headSha: string;
   status: string;
   conclusion: string | null;
-  head_sha: string;
-  name: string;
+  htmlUrl: string;
+  createdAt: string;
+}
+
+/**
+ * Interruptible sleep helper supporting AbortSignal.
+ */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new PipelineCancelledError('Operation cancelled'));
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (signal) signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new PipelineCancelledError('Operation cancelled'));
+    };
+
+    if (signal) {
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
+  });
 }
 
 export class GitHubActionsStep implements PipelineStep {
   public readonly stage = 'WAITING_FOR_GITHUB_ACTIONS' as const;
   public readonly name = 'GitHub Actions Deployment Monitor';
 
-  // --------------------------------------------------------------------------
-  // Internal: resolve the run ID for the current commit via `gh` CLI
-  // --------------------------------------------------------------------------
-  private async resolveRunIdViaCli(
+  /**
+   * Primary: Resolve workflow run ID via GitHub REST API.
+   */
+  public async resolveRunViaRest(
     repo: string,
-    sha: string
-  ): Promise<string | null> {
-    try {
-      const { stdout } = await execAsync(
-        `gh run list --repo ${repo} --json headSha,databaseId --limit 10`,
-        { timeout: 15_000 }
-      );
-      const runs: Array<{ headSha: string; databaseId: number }> = JSON.parse(stdout);
-      const match = runs.find((r) => r.headSha === sha);
-      return match ? String(match.databaseId) : null;
-    } catch {
-      return null;
+    sha: string,
+    token?: string
+  ): Promise<WorkflowRunInfo | null> {
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'video-pipeline',
+      'X-GitHub-Api-Version': '2022-11-28',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
+
+    const url = `https://api.github.com/repos/${repo}/actions/runs?head_sha=${encodeURIComponent(sha)}&per_page=20`;
+
+    try {
+      const res = await fetch(url, { headers });
+
+      if (res.status === 401) {
+        throw new GitHubActionsError(
+          `GitHub API authentication failed (HTTP 401) for repository '${repo}'. ` +
+            'Please verify that GITHUB_TOKEN has valid permissions.'
+        );
+      }
+      if (res.status === 403 || res.status === 429) {
+        throw new GitHubActionsError(
+          `GitHub API rate limit exceeded or access forbidden (HTTP ${res.status}) for repository '${repo}'.`
+        );
+      }
+      if (res.status === 404) {
+        throw new GitHubActionsError(
+          `GitHub repository '${repo}' was not found or is inaccessible (HTTP 404).`
+        );
+      }
+
+      if (res.ok) {
+        const data = (await res.json()) as {
+          workflow_runs?: Array<{
+            id: number;
+            name: string;
+            head_sha: string;
+            status: string;
+            conclusion: string | null;
+            html_url?: string;
+            created_at: string;
+            head_commit?: { id: string };
+          }>;
+        };
+
+        if (data.workflow_runs && data.workflow_runs.length > 0) {
+          const matches = data.workflow_runs.filter(
+            (r) => r.head_sha === sha || r.head_commit?.id === sha
+          );
+
+          if (matches.length > 0) {
+            // Sort by createdAt descending to pick the latest run matching the commit
+            matches.sort(
+              (a, b) =>
+                (b.created_at ? new Date(b.created_at).getTime() : 0) -
+                (a.created_at ? new Date(a.created_at).getTime() : 0)
+            );
+            const r = matches[0];
+            return {
+              id: r.id,
+              name: r.name || 'Deployment Workflow',
+              headSha: r.head_sha,
+              status: r.status,
+              conclusion: r.conclusion,
+              htmlUrl: r.html_url || `https://github.com/${repo}/actions/runs/${r.id}`,
+              createdAt: r.created_at || new Date().toISOString(),
+            };
+          }
+        }
+      }
+    } catch (err) {
+      if (err instanceof GitHubActionsError) {
+        throw err;
+      }
+      // Transient network or JSON parse errors during discovery are caught for retry
+    }
+
+    return null;
   }
 
-  // --------------------------------------------------------------------------
-  // Internal: poll the run until completed or timeout
-  // --------------------------------------------------------------------------
-  private async pollUntilComplete(
+  /**
+   * Optional Fallback: Resolve workflow run ID via `gh` CLI when installed.
+   */
+  public async resolveRunViaCli(
     repo: string,
-    runId: string,
+    sha: string
+  ): Promise<WorkflowRunInfo | null> {
+    try {
+      const { stdout } = await execAsync(
+        `gh run list --repo ${repo} --commit ${sha} --json databaseId,headSha,name,status,conclusion,url,createdAt --limit 10`,
+        { timeout: 15_000 }
+      );
+      const runs: Array<{
+        databaseId: number;
+        headSha: string;
+        name: string;
+        status: string;
+        conclusion: string | null;
+        url: string;
+        createdAt: string;
+      }> = JSON.parse(stdout);
+
+      const match = runs.find((r) => r.headSha === sha);
+      if (match) {
+        return {
+          id: match.databaseId,
+          name: match.name || 'Deployment Workflow',
+          headSha: match.headSha,
+          status: match.status,
+          conclusion: match.conclusion,
+          htmlUrl: match.url || `https://github.com/${repo}/actions/runs/${match.databaseId}`,
+          createdAt: match.createdAt,
+        };
+      }
+    } catch {
+      // `gh` CLI unavailable or failed
+    }
+
+    return null;
+  }
+
+  /**
+   * Resolves workflow run with REST API first, then CLI fallback.
+   */
+  public async resolveRun(
+    repo: string,
+    sha: string,
+    token?: string
+  ): Promise<WorkflowRunInfo | null> {
+    const viaRest = await this.resolveRunViaRest(repo, sha, token);
+    if (viaRest) return viaRest;
+    return this.resolveRunViaCli(repo, sha);
+  }
+
+  /**
+   * Polls run status until completed or timeout.
+   */
+  public async pollUntilComplete(
+    repo: string,
+    runId: number,
     timeoutMs: number,
     context: PipelineContext
   ): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     const token = process.env['GITHUB_TOKEN'];
+    const signal = context.abortController?.signal;
+
     const headers: Record<string, string> = {
       Accept: 'application/vnd.github+json',
+      'User-Agent': 'video-pipeline',
       'X-GitHub-Api-Version': '2022-11-28',
     };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    while (Date.now() < deadline) {
-      // Prefer gh CLI (no token needed in most setups)
-      let status = '';
-      let conclusion = '';
-
-      try {
-        const { stdout } = await execAsync(
-          `gh run view ${runId} --repo ${repo} --json status,conclusion`,
-          { timeout: 15_000 }
-        );
-        const data = JSON.parse(stdout);
-        status = data.status;
-        conclusion = data.conclusion ?? '';
-      } catch {
-        // Fallback: REST API
-        const url = `https://api.github.com/repos/${repo}/actions/runs/${runId}`;
-        const res = await fetch(url, { headers });
-        if (!res.ok) {
-          throw new Error(`GitHub API returned HTTP ${res.status} for run ${runId}`);
-        }
-        const data: WorkflowRun = await res.json() as WorkflowRun;
-        status = data.status;
-        conclusion = data.conclusion ?? '';
-      }
-
-      context.logger.info(
-        this.stage,
-        'POLL',
-        `Run ${runId}: status=${status} conclusion=${conclusion || 'pending'}`
-      );
-
-      if (status === 'completed') {
-        if (conclusion === 'success') return;
-        throw new Error(`GitHub Actions run ${runId} ended with conclusion: '${conclusion}'.`);
-      }
-
-      await new Promise<void>((r) => setTimeout(r, POLL_INTERVAL_MS));
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
-    throw new Error(
+    while (Date.now() < deadline) {
+      if (signal?.aborted) {
+        throw new PipelineCancelledError('GitHub Actions polling cancelled by user request.');
+      }
+
+      let status = '';
+      let conclusion = '';
+      let name = '';
+      let htmlUrl = '';
+
+      // 1. Try REST API
+      try {
+        const url = `https://api.github.com/repos/${repo}/actions/runs/${runId}`;
+        const res = await fetch(url, { headers });
+
+        if (res.status === 401) {
+          throw new GitHubActionsError(
+            `GitHub API authentication failed (HTTP 401) while polling run ${runId}.`
+          );
+        }
+        if (res.status === 403 || res.status === 429) {
+          throw new GitHubActionsError(
+            `GitHub API rate limit exceeded (HTTP ${res.status}) while polling run ${runId}.`
+          );
+        }
+
+        if (res.ok) {
+          const data = (await res.json()) as {
+            id: number;
+            name: string;
+            status: string;
+            conclusion: string | null;
+            html_url?: string;
+          };
+          status = data.status;
+          conclusion = data.conclusion ?? '';
+          name = data.name || '';
+          htmlUrl = data.html_url || '';
+        }
+      } catch (err) {
+        if (err instanceof GitHubActionsError) throw err;
+
+        // Fallback to gh CLI if REST failed
+        try {
+          const { stdout } = await execAsync(
+            `gh run view ${runId} --repo ${repo} --json name,status,conclusion,url`,
+            { timeout: 15_000 }
+          );
+          const data = JSON.parse(stdout);
+          status = data.status;
+          conclusion = data.conclusion ?? '';
+          name = data.name || name;
+          htmlUrl = data.url || htmlUrl;
+        } catch {
+          // Transient failure, retry next loop
+        }
+      }
+
+      if (status) {
+        context.logger.info(
+          this.stage,
+          'POLL',
+          `Run ${runId} (${name || 'Workflow'}): status=${status}, conclusion=${conclusion || 'in_progress'}${
+            htmlUrl ? ` | ${htmlUrl}` : ''
+          }`
+        );
+
+        if (status === 'completed') {
+          if (conclusion === 'success') {
+            return;
+          }
+          throw new GitHubActionsError(
+            `GitHub Actions run ${runId} (${name || 'Workflow'}) completed with conclusion: '${conclusion}'. URL: ${
+              htmlUrl || `https://github.com/${repo}/actions/runs/${runId}`
+            }`
+          );
+        }
+      }
+
+      await sleep(POLL_INTERVAL_MS, signal);
+    }
+
+    throw new GitHubActionsError(
       `GitHub Actions monitoring timed out after ${timeoutMs / 1000}s. ` +
         `Run ${runId} did not complete in time.`
     );
   }
 
-  // --------------------------------------------------------------------------
-  // Step execution
-  // --------------------------------------------------------------------------
   public async execute(context: PipelineContext): Promise<StepResult> {
     context.logger.info(
       this.stage,
@@ -133,9 +333,11 @@ export class GitHubActionsStep implements PipelineStep {
     try {
       const portfolioRoot = path.resolve(process.cwd(), context.config.portfolioPath || '../');
       const repo = context.config.git.repository; // e.g. "pdp212/pdp212.github.io"
-      const timeoutMs = context.config.timeout.githubActionsMs || 300_000;
+      const timeoutMs = context.config.timeout.githubActionsMs || 900_000;
+      const token = process.env['GITHUB_TOKEN'];
+      const signal = context.abortController?.signal;
 
-      // 2. Resolve commit SHA (from context if CommitStep ran, else from git)
+      // 2. Resolve commit SHA
       let sha = context.gitCommitSha ?? '';
       if (!sha) {
         const { stdout } = await execAsync('git rev-parse HEAD', { cwd: portfolioRoot });
@@ -143,42 +345,57 @@ export class GitHubActionsStep implements PipelineStep {
       }
       context.logger.info(this.stage, 'SHA', `Monitoring deployment for commit ${sha}.`);
 
-      // 3. Wait briefly for GitHub Actions to register the run
-      context.logger.info(this.stage, 'WAIT', 'Waiting 10s for Actions to register the run...');
-      await new Promise<void>((r) => setTimeout(r, 10_000));
+      // 3. Discovery loop: poll for GitHub Actions to register the run
+      const discoveryTimeoutMs = Math.min(DEFAULT_DISCOVERY_TIMEOUT_MS, timeoutMs);
+      const discoveryDeadline = Date.now() + discoveryTimeoutMs;
+      let attempt = 0;
+      let runInfo: WorkflowRunInfo | null = null;
 
-      // 4. Resolve run ID
-      let runId = await this.resolveRunIdViaCli(repo, sha);
+      while (Date.now() < discoveryDeadline) {
+        if (signal?.aborted) {
+          throw new PipelineCancelledError('GitHub Actions discovery cancelled by user request.');
+        }
 
-      // Retry once more after another short delay if not found
-      if (!runId) {
-        await new Promise<void>((r) => setTimeout(r, 10_000));
-        runId = await this.resolveRunIdViaCli(repo, sha);
+        attempt++;
+        context.logger.info(
+          this.stage,
+          'DISCOVER',
+          `Discovering workflow run for commit ${sha} (attempt ${attempt})...`
+        );
+
+        runInfo = await this.resolveRun(repo, sha, token);
+        if (runInfo) break;
+
+        await sleep(DISCOVERY_INTERVAL_MS, signal);
       }
 
-      if (!runId) {
-        throw new Error(
-          `No GitHub Actions run found for commit ${sha} in ${repo}. ` +
-            'Ensure the push triggered a workflow and GITHUB_TOKEN or gh CLI is configured.'
+      if (!runInfo) {
+        throw new GitHubActionsError(
+          `No GitHub Actions workflow run found for commit ${sha} in ${repo} after ${discoveryTimeoutMs / 1000}s. ` +
+            'Ensure the push triggered a workflow and the repository is accessible.'
         );
       }
 
-      context.logger.info(this.stage, 'RUN_FOUND', `Found run ID: ${runId}`);
+      context.logger.info(
+        this.stage,
+        'RUN_FOUND',
+        `Found workflow run ${runInfo.id} (${runInfo.name}) at ${runInfo.htmlUrl}`
+      );
 
-      // 5. Poll until complete
-      await this.pollUntilComplete(repo, runId, timeoutMs, context);
+      // 4. Poll until complete
+      await this.pollUntilComplete(repo, runInfo.id, timeoutMs, context);
 
       context.logger.info(
         this.stage,
         'ACTIONS_SUCCESS',
-        `Run ${runId} completed successfully.`,
+        `GitHub Actions deployment for run ${runInfo.id} (${runInfo.name}) completed successfully.`,
         'SUCCESS'
       );
 
       return {
         success: true,
         stage: this.stage,
-        message: `GitHub Actions run ${runId} completed successfully.`,
+        message: `GitHub Actions run ${runInfo.id} (${runInfo.name}) completed successfully.`,
       };
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));

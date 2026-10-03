@@ -1,0 +1,22 @@
+{
+  "jobId": "job_1790996141283_3nh5l",
+  "pipelineId": "pipe_1790996141288",
+  "createdAt": "2026-10-03T02:55:41.283Z",
+  "startedAt": "2026-10-03T02:55:41.283Z",
+  "completedAt": "2026-10-03T02:55:41.331Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
+  "inputCount": 1,
+  "completedCount": 1,
+  "failedCount": 0,
+  "items": [
+    {
+      "id": "vid_1790996141282_gahga",
+      "filename": "vid_1790996141282_gahga",
+      "status": "VALIDATED"
+    }
+  ],
+  "isDryRun": true,
+  "error": null,
+  "durationMs": 43
+}
