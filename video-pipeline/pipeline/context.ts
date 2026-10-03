@@ -82,6 +82,8 @@ export interface PipelineContext {
   unchangedEntries?: ManifestEntry[];
   gitBranchOriginal?: string;
   gitCommitSha?: string;
+  commitMessage?: string;
+  action?: 'commit' | 'commit_push';
   currentStage: PipelineStage;
   abortController?: AbortController;
   isCancelled?: boolean;

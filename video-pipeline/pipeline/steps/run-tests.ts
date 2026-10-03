@@ -18,15 +18,20 @@ export class RunTestsStep implements PipelineStep {
     context.logger.info(this.stage, 'START', `Running ${commands.length} test suite(s): ${commands.join('; ')}...`);
 
     const portfolioRoot = path.resolve(process.cwd(), context.config.portfolioPath || '../');
+    const videoPipelineRoot = path.resolve(portfolioRoot, 'video-pipeline');
 
     for (const cmd of commands) {
       context.logger.info(this.stage, 'EXEC_CMD', `Executing test: ${cmd}`);
 
+      const execCwd = (cmd.startsWith('npm run typecheck') || cmd.startsWith('npm test')) && path.resolve(process.cwd()) !== videoPipelineRoot
+        ? videoPipelineRoot
+        : portfolioRoot;
+
       try {
         await new Promise<void>((resolve, reject) => {
-          exec(cmd, { cwd: portfolioRoot }, (error, stdout, stderr) => {
+          exec(cmd, { cwd: execCwd }, (error, stdout, stderr) => {
             if (error) {
-              reject(new TestFailure(`Test command '${cmd}' failed: ${stderr || stdout || error.message}`));
+              reject(new TestFailure(`Test command '${cmd}' failed:\n${stderr || stdout || error.message}`));
               return;
             }
             resolve();

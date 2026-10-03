@@ -46,7 +46,7 @@ export class CommitStep implements PipelineStep {
     try {
       const portfolioRoot = path.resolve(process.cwd(), context.config.portfolioPath || '../');
 
-      // 2. Branch guard – must be on `main`
+      // 2. Branch guard – must be on `main` (or configured git branch)
       const branch = await getCurrentBranch(portfolioRoot);
       if (branch !== context.config.git.branch) {
         throw new Error(
@@ -55,8 +55,8 @@ export class CommitStep implements PipelineStep {
       }
       context.logger.info(this.stage, 'BRANCH_OK', `On branch '${branch}'.`);
 
-      // 3. No production videos tracked
-      const trackedVideos = await getTrackedVideoFiles(portfolioRoot, /assets\/videos\/projects\//);
+      // 3. Zero production videos tracked in Git index
+      const trackedVideos = await getTrackedVideoFiles(portfolioRoot, /assets\/videos\/projects\/|\.(mp4|mov|mkv|avi|webm)$/i);
       if (trackedVideos.length > 0) {
         throw new Error(
           `Commit blocked: production video(s) still tracked by Git:\n  ${trackedVideos.join('\n  ')}`
@@ -64,11 +64,17 @@ export class CommitStep implements PipelineStep {
       }
       context.logger.info(this.stage, 'NO_TRACKED_VIDEOS', 'Zero production videos in Git index.');
 
-      // 4. Assert only allowed files are changed
+      // 4. Assert only allowed files are modified/untracked
       await assertOnlyAllowedChanges(portfolioRoot, ALLOWED_CHANGE_PATTERNS);
       context.logger.info(this.stage, 'STAGED_FILES_OK', 'Only permitted files are modified.');
 
-      // 5. Stage the allowed paths
+      // 5. Inspect diff before staging
+      const { stdout: unstagedDiff } = await execAsync('git diff', { cwd: portfolioRoot });
+      if (unstagedDiff.includes('.env') || unstagedDiff.includes('R2_SECRET_ACCESS_KEY')) {
+        throw new Error('Commit blocked: sensitive credentials detected in git diff.');
+      }
+
+      // 6. Stage only allowed paths
       const manifestRelPath = context.config.manifest?.relativeFilePath || 'data/work-manifest.json';
       await execAsync(`git add .gitignore video-pipeline "${manifestRelPath}"`, { cwd: portfolioRoot });
       context.logger.info(
@@ -77,18 +83,60 @@ export class CommitStep implements PipelineStep {
         `Staged .gitignore, video-pipeline/, and ${manifestRelPath}.`
       );
 
-      // 6. Execute commit
-      await execAsync(`git commit -m "${COMMIT_MSG}"`, { cwd: portfolioRoot });
+      // 7. Inspect staged diff
+      const { stdout: stagedDiff } = await execAsync('git diff --cached', { cwd: portfolioRoot });
+      if (stagedDiff.includes('.env') || stagedDiff.includes('R2_SECRET_ACCESS_KEY')) {
+        throw new Error('Commit blocked: sensitive credentials detected in staged diff.');
+      }
 
-      // 7. Capture commit SHA for downstream steps
+      // 8. Idempotency Check: Are there changes staged to commit?
+      const { stdout: stagedFiles } = await execAsync('git diff --cached --name-only', { cwd: portfolioRoot });
+      if (!stagedFiles.trim()) {
+        const { stdout: sha } = await execAsync('git rev-parse HEAD', { cwd: portfolioRoot });
+        context.gitCommitSha = sha.trim();
+
+        context.logger.info(this.stage, 'NO_CHANGES', `Working tree is clean. HEAD commit: ${context.gitCommitSha}`);
+        context.logger.info(this.stage, 'SUMMARY', `COMMIT SHA: ${context.gitCommitSha}\nBRANCH: ${branch}\nGIT STATUS: clean (nothing to commit)\nCOMMIT SUCCESS\nPUSH: NOT PERFORMED`);
+
+        return {
+          success: true,
+          stage: this.stage,
+          message: `Commit step clean: nothing to commit at ${context.gitCommitSha}`,
+        };
+      }
+
+      // 9. Determine commit message
+      let commitMsg = context.commitMessage;
+      if (!commitMsg) {
+        if (context.items && context.items.length > 0) {
+          const names = context.items.map((i) => i.filename || i.id).join(', ');
+          commitMsg = `feat(video-pipeline): deliver ${context.items.length} video(s) to R2 (${names})`;
+        } else if (stagedFiles.includes('data/work-manifest.json')) {
+          commitMsg = 'feat(video-pipeline): update work-manifest with delivered videos';
+        } else {
+          commitMsg = COMMIT_MSG;
+        }
+      }
+
+      // 10. Execute commit
+      await execAsync(`git commit -m "${commitMsg.replace(/"/g, '\\"')}"`, { cwd: portfolioRoot });
+
+      // 11. Capture commit SHA & git status
       const { stdout: sha } = await execAsync('git rev-parse HEAD', { cwd: portfolioRoot });
       context.gitCommitSha = sha.trim();
+
+      const { stdout: status } = await execAsync('git status --short', { cwd: portfolioRoot });
 
       context.logger.info(
         this.stage,
         'COMMITTED',
-        `Commit ${context.gitCommitSha}: ${COMMIT_MSG}`,
+        `Commit ${context.gitCommitSha}: ${commitMsg}`,
         'SUCCESS'
+      );
+      context.logger.info(
+        this.stage,
+        'AUDIT_SUMMARY',
+        `COMMIT SHA: ${context.gitCommitSha}\nCOMMIT MESSAGE: ${commitMsg}\nBRANCH: ${branch}\nGIT STATUS: ${status.trim() || 'clean'}\nCOMMIT SUCCESS\nPUSH: NOT PERFORMED`
       );
 
       return {

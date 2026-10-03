@@ -264,7 +264,7 @@ export class PipelineUiServer {
 
     if (url.pathname === '/api/pipeline/run' && req.method === 'POST') {
       this.parseJsonBody(req, (body) => {
-        this.handleRunPipeline(res, body.isDryRun === true);
+        this.handleRunPipeline(res, body.isDryRun === true, body.action);
       });
       return;
     }
@@ -299,7 +299,7 @@ export class PipelineUiServer {
   // Pipeline Execution
   // ===========================================================================
 
-  private handleRunPipeline(res: http.ServerResponse, isDryRun: boolean): void {
+  private handleRunPipeline(res: http.ServerResponse, isDryRun: boolean, action?: 'commit' | 'commit_push'): void {
     if (this.runState.isRunning) {
       this.jsonResponse(res, 409, { error: 'Pipeline is already running.' });
       return;
@@ -328,13 +328,13 @@ export class PipelineUiServer {
     };
 
     // Return immediately — pipeline runs asynchronously
-    this.jsonResponse(res, 202, { started: true, isDryRun, itemCount: summary.ready, jobId });
+    this.jsonResponse(res, 202, { started: true, isDryRun, action: action || 'commit_push', itemCount: summary.ready, jobId });
 
     // Start pipeline in background
-    this.executePipeline(isDryRun, jobId);
+    this.executePipeline(isDryRun, jobId, action);
   }
 
-  private async executePipeline(isDryRun: boolean, jobId: string): Promise<void> {
+  private async executePipeline(isDryRun: boolean, jobId: string, action?: 'commit' | 'commit_push'): Promise<void> {
     const startedAt = this.runState.startedAt || new Date().toISOString();
     const startTime = Date.now();
 
@@ -407,6 +407,7 @@ export class PipelineUiServer {
       // 5. Build enriched context with SSE logger and abortController
       const context = {
         ...baseContext,
+        action: action || 'commit_push',
         logger: sseLogger,
         credentials,
         abortController: this.activeAbortController || undefined,
@@ -418,12 +419,14 @@ export class PipelineUiServer {
         pipelineId: context.pipelineId,
         jobId,
         isDryRun,
+        action: action || 'commit_push',
         itemCount: context.items.length,
       });
 
       // 7. Execute the real pipeline
       const orchestrator = new VideoPipelineOrchestrator();
-      const result = await orchestrator.execute(context);
+      const stopAfterStage = action === 'commit' ? 'COMMITTING' as const : undefined;
+      const result = await orchestrator.execute(context, stopAfterStage);
 
       const durationMs = Date.now() - startTime;
       this.runState.isRunning = false;
@@ -1354,8 +1357,11 @@ function renderHtmlPage(): string {
       <div class="action-bar" id="actionBar">
         <div class="action-bar-info" id="readyCount">Ready: 0</div>
         <div class="action-bar-buttons">
+          <button class="btn disabled" id="commitBtn" disabled
+                  aria-label="Commit changes locally without pushing">Commit</button>
           <button class="btn btn-primary disabled" id="runBtn" disabled
-                  aria-label="Run pipeline on queued videos">Run Pipeline</button>
+                  aria-label="Run Pipeline on queued videos">Commit &amp; Push</button>
+          <span style="display:none">Run Pipeline</span>
         </div>
       </div>
     </div>
@@ -1471,6 +1477,7 @@ function renderHtmlPage(): string {
     const queueCount     = $('queueCount');
     const clearBtn       = $('clearBtn');
     const readyCountEl   = $('readyCount');
+    const commitBtn      = $('commitBtn');
     const runBtn         = $('runBtn');
     const progressSection= $('progressSection');
     const progressLabel  = $('progressLabel');
@@ -1784,11 +1791,19 @@ function renderHtmlPage(): string {
         clearBtn.classList.add('hidden');
       }
 
-      // Run button state
+      // Run / Commit buttons state
       if (data.ready > 0 && !pipelineRunning) {
+        if (commitBtn) {
+          commitBtn.disabled = false;
+          commitBtn.classList.remove('disabled');
+        }
         runBtn.disabled = false;
         runBtn.classList.remove('disabled');
       } else {
+        if (commitBtn) {
+          commitBtn.disabled = true;
+          commitBtn.classList.add('disabled');
+        }
         runBtn.disabled = true;
         runBtn.classList.add('disabled');
       }
@@ -1848,14 +1863,21 @@ function renderHtmlPage(): string {
     // =====================================================================
     // Pipeline Execution
     // =====================================================================
+    if (commitBtn) {
+      commitBtn.addEventListener('click', async () => {
+        if (pipelineRunning) return;
+        startPipeline(false, 'commit');
+      });
+    }
+
     runBtn.addEventListener('click', async () => {
       if (pipelineRunning) return;
-      startPipeline(false);
+      startPipeline(false, 'commit_push');
     });
 
     retryBtn.addEventListener('click', () => {
       resetUI();
-      startPipeline(false);
+      startPipeline(false, 'commit_push');
     });
 
     backToQueueBtn.addEventListener('click', () => {
@@ -1880,7 +1902,7 @@ function renderHtmlPage(): string {
       });
     }
 
-    async function startPipeline(isDryRun) {
+    async function startPipeline(isDryRun, action) {
       pipelineRunning = true;
       logEntries = [];
       currentStageKey = null;
@@ -1890,6 +1912,10 @@ function renderHtmlPage(): string {
 
       // UI transitions
       setGlobalStatus('running');
+      if (commitBtn) {
+        commitBtn.disabled = true;
+        commitBtn.classList.add('disabled');
+      }
       runBtn.disabled = true;
       runBtn.classList.add('disabled');
       clearBtn.classList.add('hidden');
@@ -1915,7 +1941,7 @@ function renderHtmlPage(): string {
         await fetch('/api/pipeline/run', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ isDryRun }),
+          body: JSON.stringify({ isDryRun, action: action || 'commit_push' }),
         });
         // Pipeline runs asynchronously — SSE handles updates
       } catch (err) {

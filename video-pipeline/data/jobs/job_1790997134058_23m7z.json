@@ -3,11 +3,11 @@
   "pipelineId": "pipe_1790997134060",
   "createdAt": "2026-10-03T03:12:14.058Z",
   "startedAt": "2026-10-03T03:12:14.058Z",
-  "completedAt": null,
-  "status": "RUNNING",
-  "currentStage": "IDLE",
+  "completedAt": "2026-10-03T03:12:52.765Z",
+  "status": "COMPLETED",
+  "currentStage": "COMPLETED",
   "inputCount": 1,
-  "completedCount": 0,
+  "completedCount": 1,
   "failedCount": 0,
   "items": [
     {
@@ -18,5 +18,5 @@
   ],
   "isDryRun": false,
   "error": null,
-  "durationMs": null
+  "durationMs": 38702
 }
